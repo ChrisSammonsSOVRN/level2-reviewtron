@@ -9,7 +9,7 @@ const imageAnalyzer = require('./imageAnalyzer');
 const adAnalyzer = require('./adAnalyzer');
 const sqlGenerator = require('./sqlGenerator');
 const db = require('../db/database'); // Assuming we have a database connection module
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 
 /**
  * Checks if a URL contains banned words or patterns

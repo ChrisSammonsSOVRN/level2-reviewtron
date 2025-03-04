@@ -9,7 +9,7 @@ const imageAnalyzer = require('./imageAnalyzer');
 const adAnalyzer = require('./adAnalyzer');
 const sqlGenerator = require('./sqlGenerator');
 const db = require('../db/database'); // Assuming we have a database connection module
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 
 /**
  * Checks if a URL contains banned words or patterns
@@ -451,8 +451,11 @@ async function auditUrl(req, res) {
     try {
         // Launch browser
         browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            executablePath: process.env.NODE_ENV === 'production' 
+              ? '/usr/bin/google-chrome-stable'  // Path to Chrome on Render
+              : puppeteer.executablePath(),      // Local development fallback
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+            headless: "new"
         });
         
         // Create new page

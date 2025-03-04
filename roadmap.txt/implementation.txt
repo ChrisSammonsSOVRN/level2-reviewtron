@@ -1,0 +1,157 @@
+Here’s a **complete roadmap** from **where you are now** to a **fully functional, production-ready product**. The roadmap follows a **structured approach** with **milestones, testing, and deployment steps** to ensure a smooth development process.
+
+---
+
+# **🛠 Website Auditor Roadmap**
+### **📌 Phase 1: Core Development (Current Stage)**
+✅ **Step 1: Backend Setup**
+- [x] Initialize **Express/FastAPI** backend
+- [x] Set up **PostgreSQL** database
+- [x] Implement **basic URL filtering**
+- [x] Create a **logging system** with performance tracking
+- [x] Implement a **REST API** for audits
+
+✅ **Step 2: Browser Extension**
+- [x] Setup **manifest.json** (Manifest v3)
+- [x] Implement **content script** for page extraction
+- [x] Create **window.html** for audit results
+- [x] Implement **window.js** to fetch and display audit results
+- [x] Establish **communication between extension and backend**
+
+✅ **Step 3: Puppeteer for Automated Site Processing**
+- [x] Setup **Puppeteer/Playwright**
+- [x] Implement **site loading tests**
+- [x] Detect **redirects, non-loading sites, and GEO-blocking**
+- [x] Store results in **database**
+
+---
+
+# **📍 Phase 2: Advanced Checks & API Integrations**
+🚀 **Step 4: Implement Advanced Content Analysis**
+- [ ] **Content Recency Check**:
+  - [ ] Extract and parse **sitemaps.xml**
+  - [ ] Fallback to **HTML-based content checks**
+  - [ ] Store **latest and oldest article dates**
+  - [ ] Implement **"Fail for Content Recency"** rule
+
+- [ ] **Hate Speech Detection**:
+  - [ ] Use **Google Cloud NLP API** or **custom NLP model**
+  - [ ] Detect **hate speech in extracted text**
+  - [ ] Flag content accordingly
+
+- [ ] **Plagiarism Check**:
+  - [ ] Extract **representative paragraphs** from content
+  - [ ] Use **Google Cloud API** for similarity detection
+  - [ ] Set **85% similarity threshold** for failing sites
+
+- [ ] **Image Analysis for Adult/Violent Content**:
+  - [ ] Extract **5 random images** per site
+  - [ ] Use **Google Cloud Vision API**
+  - [ ] Classify **adult/violent content**
+  - [ ] Fail site if flagged
+
+🚀 **Step 5: Ad Presence Analysis**
+- [ ] **Monitor network requests** in Puppeteer
+- [ ] Detect **ad impression pixels**
+- [ ] Identify **premium ad partners**
+- [ ] Set pass/fail rules:
+  - **≥2 Premium Partners** → ✅ Pass
+  - **<2 Partners** → ⚠️ Human Review
+
+🚀 **Step 6: Automate SQL Query Generation**
+- [ ] Create **SQL query generator** for audit results
+- [ ] Automate **database updates**
+- [ ] Store **pass/fail reasons in PostgreSQL**
+- [ ] Build **error logging & tracking in DB**
+
+---
+
+# **📍 Phase 3: Frontend Dashboard & Centralized Display**
+🚀 **Step 7: Build Admin Dashboard**
+- [ ] Initialize **React/Next.js frontend**
+- [ ] Create **login & user authentication**
+- [ ] Implement **data visualization**
+  - **Pass/Fail statistics**
+  - **Audit history logs**
+  - **Top failure reasons**
+  - **Geo-blocking statistics**
+
+🚀 **Step 8: Connect Frontend to Backend**
+- [ ] Fetch **audit reports from the backend**
+- [ ] Allow **manual re-checking of sites**
+- [ ] Implement **search & filtering**
+
+🚀 **Step 9: Implement User Roles**
+- [ ] **Admin role**: Can approve/reject flagged sites
+- [ ] **Auditor role**: Can review failed sites
+- [ ] **Basic user role**: Can request site audits
+
+---
+
+# **📍 Phase 4: Testing, Optimization, and Deployment**
+🚀 **Step 10: Testing & Debugging**
+- [ ] **Unit Tests**:
+  - [ ] Backend API tests (Jest, Mocha)
+  - [ ] Puppeteer tests (Headless browser testing)
+  - [ ] SQL Query validation
+
+- [ ] **Integration Tests**:
+  - [ ] Test API + Browser Extension
+  - [ ] Test Frontend + Backend
+
+- [ ] **Performance Testing**:
+  - [ ] Benchmark **Puppeteer runs** for batch processing
+  - [ ] Optimize **database queries**
+
+🚀 **Step 11: Deploy Backend**
+- [ ] Choose **Cloud Provider**:
+  - **AWS Lambda** (serverless)
+  - **Google Cloud Run**
+  - **VPS/Dedicated Server (DigitalOcean, Linode, etc.)**
+- [ ] Deploy **PostgreSQL database**
+- [ ] Deploy **Express API / FastAPI**
+
+🚀 **Step 12: Deploy Frontend**
+- [ ] Host **React/Next.js UI** on:
+  - **Vercel** (recommended)
+  - **Netlify**
+  - **Self-hosted on VPS**
+- [ ] Connect **frontend to backend API**
+
+🚀 **Step 13: Package & Deploy Browser Extension**
+- [ ] Package extension as `.zip`
+- [ ] Submit to:
+  - **Chrome Web Store**
+  - **Mozilla Add-ons Store**
+  - **Edge Add-ons Store**
+
+---
+
+# **🚀 Final Deliverable**
+✅ **A fully functional website auditor** with:
+- **Automated audits**
+- **Advanced content checks (Hate Speech, Plagiarism, Ad Analysis)**
+- **Browser extension for site verification**
+- **Admin dashboard for centralized reporting**
+- **Scalable backend & database**
+
+---
+
+## **📅 Estimated Timeline**
+| Milestone | Task | Timeframe |
+|-----------|------|----------|
+| **Phase 1** | Core backend, extension, Puppeteer setup | **2-3 weeks** |
+| **Phase 2** | Advanced checks, Google Cloud API integration | **3-4 weeks** |
+| **Phase 3** | Dashboard, database logging, frontend integration | **3-4 weeks** |
+| **Phase 4** | Testing, optimization, deployment | **2-3 weeks** |
+| **Total** | 🚀 Full MVP Ready | **~10-14 weeks** |
+
+---
+
+# **🔜 Next Steps**
+### **📌 Immediate Actions**
+1️⃣ **Complete URL Filtering & Logging** (Almost done!)  
+2️⃣ **Refine Puppeteer Scraping & Store Failures**  
+3️⃣ **Start Building Content Recency & Hate Speech Detection**  
+
+Let me know if you need help with any step, **code samples**, or further breakdowns! 🚀🔥

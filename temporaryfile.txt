@@ -1,0 +1,51 @@
+Below is a detailed plan for rebuilding your imageAnalyzer.js from scratch while ensuring that every extraction method returns an array. This design uses a simplified “img tag” approach that:
+
+• Fetches the page HTML using Axios  
+• Uses Cheerio to grab all the <img> tags  
+• Filters out any images without a valid src  
+• Converts relative URLs to absolute URLs  
+• Randomly selects 4 images from the resulting list for analysis
+
+This approach guarantees that you always end up with an array (even if empty) for downstream processing.
+
+---
+
+**Detailed Step-by-Step Design:**
+
+1. **Module Setup and Imports:**  
+   Ensure that your new module imports Axios, Cheerio, and your logging utility so that it integrates with auditController exactly as before. All dependencies must be correctly required so that the module exports an instance of your image analyzer class.
+
+2. **Constructor Initialization:**  
+   In the class constructor, set up your configuration options by reading environment variables. For example, define a maximum number of images (defaulting to 4) to be analyzed. Also, log the configuration details so that you know how many images will be processed.
+
+3. **Image Extraction Process:**  
+   a. **Fetch the HTML:**  
+      Use Axios to retrieve the HTML content from the given URL.  
+   b. **Load HTML into Cheerio:**  
+      Parse the HTML with Cheerio to access the DOM easily.  
+   c. **Extract All <img> Tags:**  
+      Iterate over each <img> element. For each element, get its src attribute.  
+   d. **Validate and Normalize the src:**  
+      Check that the src attribute exists and is not empty. Convert any relative URLs into absolute URLs using the base URL.  
+   e. **Collect Results in an Array:**  
+      Use an empty array to collect objects for each valid image (each object at minimum contains the src and, optionally, alt text). This ensures that you always return an array even if no images are found (in which case, you return an empty array).
+
+4. **Random Selection of Images:**  
+   Once you have your array of image objects, check the length of the array. If it contains more than 4 images, shuffle the array (using a reliable algorithm like Fisher–Yates) and then select the first 4 images. This gives you a simple and effective way to work with a representative sample without overcomplicating the selection logic.
+
+5. **Image Analysis:**  
+   With your final array of up to 4 images, proceed to analyze them using the Google Vision API. For each image in your array, send an API request to check for inappropriate content (e.g., safe search detection). Collect the responses in a results array. Even if one API call fails, include its result (with an error field) in the results.
+
+6. **Evaluation and Output:**  
+   Finally, create an evaluation function that goes through the analysis results. Count how many images are flagged, safe, or encountered errors. Use this data to determine an overall status (pass, fail, error) for the URL. Return an object with the details along with the original URL.
+
+7. **Ensuring Consistency:**  
+   Throughout the extraction and analysis process, add safety checks so that if any function unexpectedly returns a non-array value, you convert it into an array. This avoids any “images parameter is not an array” warnings. For example, if your extraction function ever produces a single object, wrap it inside an array before continuing.
+
+---
+
+**Summary of the Process:**
+
+Your new imageAnalyzer.js will start by fetching the HTML of the target page and using Cheerio to collect all <img> elements. It will validate each image’s src attribute and convert relative URLs to absolute ones. Then it randomly selects four images from this collection, ensuring that the function always returns an array. These images are then individually analyzed via the Vision API for content safety. The results are compiled into an object that includes counts and details for flagged, safe, and error images, which is returned to auditController. This simplified and consistent approach eliminates overcomplication while ensuring that your images parameter is always an array, thereby preventing the errors you were seeing.
+
+Feel free to adjust the details (such as the filtering criteria or random selection method) to best fit your application’s needs.

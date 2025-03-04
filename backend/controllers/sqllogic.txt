@@ -1,0 +1,268 @@
+class SQLGenerator {
+  constructor() {
+    this.resultsData = new Map();
+    // Updated rejectionMap based on rejectreasons.txt
+    this.rejectionMap = new Map([
+      // URL and Redirect Checks (Phase 0-1)
+      ['Banned word detected in URL', '261'],
+      ['External redirect detected', '277'],
+      ['Site failed to load', '298'],
+      ['Geo-blocking detected', '298'],
+      
+      // Content Recency Check (Phase 2)
+      ['Content too old', '284'],
+      ['No date information found', '298'],
+      ['Unable to extract dates from content', '284'],
+      
+      // Hate Speech Detection
+      ['Hate speech detected', '272'],
+      ['Multiple instances of concerning content', '272'],
+      ['Explicit harmful content detected', '272'],
+      
+      // Plagiarism Check
+      ['Content similarity above 85% threshold', '64'],
+      ['Multiple paragraphs appear to be plagiarized', '64'],
+      ['Unable to verify content originality', '64'],
+      
+      // Image Analysis
+      ['Adult content detected in images', '272'],
+      ['Violent content detected in images', '272'],
+      ['Inappropriate imagery detected', '272'],
+      
+      // Ad Presence Analysis
+      ['No ad implementation detected', '298'],
+      ['Insufficient premium ad partners', '298'],
+      
+      // General System Failures
+      ['Timeout during analysis', '298'],
+      ['Unable to access site content', '298'],
+      ['Technical error during analysis', '298']
+    ]);
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    document.getElementById('generate').addEventListener('click', () => this.processFiles());
+    document.getElementById('download').addEventListener('click', () => this.downloadSQL());
+    
+    // Clear output when new files are selected
+    document.getElementById('resultsFile').addEventListener('change', () => {
+      document.getElementById('output').textContent = '';
+      document.getElementById('download').style.display = 'none';
+    });
+  }
+
+  async processFiles() {
+    const resultsFile = document.getElementById('resultsFile').files[0];
+    const pendingFile = document.getElementById('pendingFile').files[0];
+
+    if (!resultsFile || !pendingFile) {
+      alert('Please select both files');
+      return;
+    }
+
+    try {
+      // Parse the results file first
+      const resultsText = await resultsFile.text();
+      this.parseResultsFile(resultsText);
+      
+      // Then process the pending sites file
+      const pendingText = await pendingFile.text();
+      const sqlStatements = this.generateSQL(pendingText);
+      
+      if (sqlStatements.length === 0) {
+        alert('No SQL statements were generated. Please check your input files.');
+        return;
+      }
+      
+      document.getElementById('output').textContent = sqlStatements.join('\n');
+      document.getElementById('download').style.display = 'block';
+    } catch (error) {
+      console.error('Error details:', error);
+      alert('Error processing files: ' + error.message);
+    }
+  }
+
+  parseResultsFile(content) {
+    const lines = content.split('\n');
+    console.log('Results file lines:', lines.length);
+    
+    // Skip header row
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      const columns = line.split(',');
+      const url = columns[0]?.trim();
+      const status = columns[1]?.trim();
+      const details = columns[2]?.trim(); // The textual rejection reason
+      // Previously columns[3] held a numeric code; we now use details
+      
+      if (url && status) {
+        if (status === 'Failed') {
+          if (details) {
+            console.log('Adding failed site:', url, 'Details:', details);
+            // Store the details for later lookup
+            this.resultsData.set(url.toLowerCase(), { 
+              status: 'failed', 
+              details: details 
+            });
+          }
+        } else if (status === 'Passed') {
+          if (details === 'Quarantined for Human Review') {
+            console.log('Adding passed but quarantined site:', url);
+            this.resultsData.set(url.toLowerCase(), { 
+              status: 'quarantined',
+              details: 'Passed checks but requires human review'
+            });
+          } else {
+            console.log('Adding passed site:', url);
+            this.resultsData.set(url.toLowerCase(), { 
+              status: 'passed' 
+            });
+          }
+        }
+      }
+    }
+    
+    console.log('Final results data:', this.resultsData);
+  }
+
+  getRejectionCode(details) {
+    // Try an exact match first
+    if (this.rejectionMap.has(details)) {
+      return this.rejectionMap.get(details);
+    }
+    
+    // Try partial matching: if the details contain one of the keys, return its code.
+    for (const [key, code] of this.rejectionMap) {
+      if (details.includes(key)) {
+        return code;
+      }
+    }
+    
+    // Default to 298 if no match is found
+    console.warn('No rejection code found for:', details);
+    return '298';
+  }
+
+  generateSQL(pendingContent) {
+    const sqlStatements = [];
+    const lines = pendingContent.split('\n');
+    
+    console.log('Processing pending content, total lines:', lines.length);
+    
+    // Add transaction start
+    sqlStatements.push('START TRANSACTION;');
+    
+    // Arrays for different types of statements
+    const denialUpdates = [];
+    const denialAudits = [];
+    const approvalPILs = [];
+    const approvalUpdates = [];
+    const approvalAudits = [];
+    const quarantinedSites = [];  // For quarantined sites
+    
+    // Skip header row
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const [id, affiliate_id, site] = line.split(',');
+      if (!id || !affiliate_id || !site) continue;
+
+      const siteData = this.resultsData.get(site.toLowerCase());
+      if (!siteData) continue;
+
+      if (siteData.status === 'failed') {
+        // Use the textual details to get the rejection code
+        const numericCode = this.getRejectionCode(siteData.details);
+        
+        denialUpdates.push(
+          `UPDATE ad_sites SET approval_state = 2, reject_reason_code = ${numericCode}, ` +
+          `approval_state_updated = NOW() WHERE affiliate_id = ${affiliate_id} AND ` +
+          `approval_state = 32 AND site = "${site}";`
+        );
+        denialAudits.push(`(${id},'bulk-approval_sovrn-com',2)`);
+      } 
+      else if (siteData.status === 'passed') {
+        approvalPILs.push(`('${site}',1,${affiliate_id})`);
+        approvalUpdates.push(
+          `UPDATE ad_sites SET approval_state = 92, approval_state_updated = NOW() ` +
+          `WHERE site = '${site}' AND approval_state = 32 AND affiliate_id = ${affiliate_id};`
+        );
+        approvalAudits.push(`(${id},'bulk-approval_sovrn-com',92)`);
+      }
+      else if (siteData.status === 'quarantined') {
+        quarantinedSites.push(`${site} (ID: ${id}, Affiliate: ${affiliate_id})`);
+      }
+    }
+    
+    // Denial statements
+    if (denialUpdates.length > 0) {
+      sqlStatements.push('\n# Denial Update statements');
+      sqlStatements.push(denialUpdates.join('\n'));
+      sqlStatements.push('\n# Denial Audit entries');
+      sqlStatements.push('INSERT IGNORE INTO review_site_audit (site_id, audit_username, approval_state) VALUES');
+      sqlStatements.push(denialAudits.join(',\n'));
+    }
+    
+    // Approval statements
+    if (approvalPILs.length > 0) {
+      sqlStatements.push('\n# PIL entries');
+      sqlStatements.push(approvalPILs.join(',\n'));
+      sqlStatements.push('\n# Approval Update statements');
+      sqlStatements.push(approvalUpdates.join('\n'));
+      sqlStatements.push('\n# Approval Audit entries');
+      sqlStatements.push('INSERT IGNORE INTO review_site_audit (site_id, audit_username, approval_state) VALUES');
+      sqlStatements.push(approvalAudits.join(',\n'));
+    }
+    
+    // Quarantined sites
+    if (quarantinedSites.length > 0) {
+      sqlStatements.push('\n# Sites Quarantined for Human Review');
+      sqlStatements.push('-- The following sites require manual review:');
+      sqlStatements.push(quarantinedSites.join('\n'));
+
+      // Generate CSV for quarantined sites
+      const csvContent = ['Site,ID,Affiliate ID'];
+      quarantinedSites.forEach(site => {
+        const matches = site.match(/(.*?) \(ID: (.*?), Affiliate: (.*?)\)/);
+        if (matches) {
+          csvContent.push(`${matches[1]},${matches[2]},${matches[3]}`);
+        }
+      });
+
+      // Create and trigger CSV download
+      const blob = new Blob([csvContent.join('\n')], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'quarantined_sites.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    
+    // Commit the transaction
+    sqlStatements.push('\nCOMMIT;');
+    
+    console.log('Generated statements count:', sqlStatements.length);
+    return sqlStatements;
+  }
+
+  downloadSQL() {
+    const content = document.getElementById('output').textContent;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'generated_sql.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Initialize the application
+new SQLGenerator();

@@ -1,0 +1,58 @@
+level2-reviewtron/
+│── backend/                   # Backend API & Server Puppeteering
+│   ├── controllers/           # Business logic (e.g., audit execution)
+│   │   ├── touch auditController.js 
+│   │   ├── touch siteController.js
+│   │   ├── adAnalyzer.js
+│   │   ├── plagiarismChecker.js
+│   │   ├── hateSpeechChecker.js
+│   │   ├── imageAnalyzer.js
+│   ├── database/              # Database Models and Queries
+│   │   ├── models.js
+│   │   ├── db.js
+│   ├── middlewares/           # Request handling, validation
+│   ├── routes/                # Express/FastAPI endpoints
+│   ├── services/              # External API calls (Google Cloud, NLP, etc.)
+│   ├── utils/                 # Helper functions
+│   │   ├── logger.js          # Dedicated logging module
+│   ├── app.js                 # Main Express/FastAPI server
+│
+│── frontend/                  # Frontend (React/Next.js)
+│   ├── components/            # Reusable UI components
+│   ├── pages/                 # Main pages
+│   ├── services/              # API calls to backend
+│   ├── utils/                 # Helper functions
+│   ├── App.js                 # Main App component
+│
+browser-extension/
+│   ── src/                          # Main source files
+│   ├── background.js             # Background script (manages extension behavior)
+│   ├── content.js                # Runs in the context of the webpage
+│   ├── extension-api.js          # Handles communication with backend
+│   ├── window.js                 # Manages window-based UI logic
+│   ├── logger.js                 # Dedicated logging module
+│
+    │── ui/                           # UI for the extension
+│   ├── window.html               # Main analysis window UI
+│   ├── styles.css                # Styling for window.html
+│
+│   ── manifest.json                 # Extension metadata
+│   ── README.md                     # Documentation
+│
+│── scripts/                   # Scraping and Puppeteering
+│   ├── puppeteer-scraper.js   # Puppeteer functions for automation
+│   ├── rotate-agents.js       # Rotates user agents
+│
+│── tests/                     # Unit and integration tests
+│   ├── auditTests.js
+│   ├── siteTests.js
+│   ├── plagiarismTests.js
+│
+│── config/                    # Configuration files
+│   ├── env.js                 # Environment variables
+│
+│── logs/                      # Logs for debugging
+│── .env                       # Environment variables
+│── package.json               # Dependencies (if using Node.js)
+│── requirements.txt           # Dependencies (if using Python)
+│── README.md                  # Documentation

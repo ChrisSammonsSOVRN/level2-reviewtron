@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reviewtron 2000 MAX</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-search-check"></i>
+                <h1>Website Auditor</h1>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#" class="active" data-page="dashboard">Dashboard</a></li>
+                    <li><a href="#" data-page="audit">Audit URL</a></li>
+                    <li><a href="#" data-page="history">Audit History</a></li>
+                    <li><a href="#" data-page="stats">Statistics</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Dashboard Page -->
+            <section id="dashboard" class="page active">
+                <h2>Dashboard</h2>
+                <div class="stats-cards">
+                    <div class="card">
+                        <div class="card-icon"><i class="fas fa-globe"></i></div>
+                        <div class="card-content">
+                            <h3>Total Audits</h3>
+                            <p id="total-audits">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+                        <div class="card-content">
+                            <h3>Pass Rate</h3>
+                            <p id="pass-rate">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon"><i class="fas fa-times-circle"></i></div>
+                        <div class="card-content">
+                            <h3>Fail Rate</h3>
+                            <p id="fail-rate">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon"><i class="fas fa-calendar-check"></i></div>
+                        <div class="card-content">
+                            <h3>Today's Audits</h3>
+                            <p id="today-audits">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <h3>Audit Trends (Last 30 Days)</h3>
+                        <canvas id="trends-chart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Top Failure Reasons</h3>
+                        <canvas id="reasons-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="recent-audits">
+                    <h3>Recent Audits</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>URL</th>
+                                    <th>Timestamp</th>
+                                    <th>Status</th>
+                                    <th>Failure Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-audits-table">
+                                <tr>
+                                    <td colspan="5">Loading recent audits...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Audit URL Page -->
+            <section id="audit" class="page">
+                <h2>Audit URL</h2>
+                <div class="audit-form">
+                    <div class="form-group">
+                        <label for="url-input">Enter URL to audit:</label>
+                        <div class="input-group">
+                            <input type="url" id="url-input" placeholder="https://example.com" required>
+                            <button id="audit-button" class="btn primary">Audit URL</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="audit-results" class="hidden">
+                    <h3>Audit Results</h3>
+                    <div class="audit-summary">
+                        <div class="audit-status">
+                            <span id="audit-status-icon"></span>
+                            <span id="audit-status-text"></span>
+                        </div>
+                        <div class="audit-url" id="audit-url"></div>
+                        <div class="audit-timestamp" id="audit-timestamp"></div>
+                    </div>
+
+                    <div class="checks-container">
+                        <h4>Checks</h4>
+                        <div id="checks-list"></div>
+                    </div>
+                </div>
+
+                <div id="audit-loading" class="hidden">
+                    <div class="loading-spinner"></div>
+                    <p>Auditing URL... This may take a minute.</p>
+                </div>
+
+                <div id="audit-error" class="hidden">
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p id="error-text"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Audit History Page -->
+            <section id="history" class="page">
+                <h2>Audit History</h2>
+                <div class="search-container">
+                    <div class="search-form">
+                        <div class="form-group">
+                            <label for="search-input">Search URL:</label>
+                            <input type="text" id="search-input" placeholder="example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="status-filter">Status:</label>
+                            <select id="status-filter">
+                                <option value="">All</option>
+                                <option value="passed">Passed</option>
+                                <option value="failed">Failed</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="date-from">From:</label>
+                            <input type="date" id="date-from">
+                        </div>
+                        <div class="form-group">
+                            <label for="date-to">To:</label>
+                            <input type="date" id="date-to">
+                        </div>
+                        <button id="search-button" class="btn primary">Search</button>
+                        <button id="export-button" class="btn secondary">Export CSV</button>
+                    </div>
+                </div>
+
+                <div class="history-results">
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>URL</th>
+                                    <th>Timestamp</th>
+                                    <th>Status</th>
+                                    <th>Failure Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table">
+                                <tr>
+                                    <td colspan="5">Use the search form to find audit history.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="pagination-controls"></div>
+                </div>
+            </section>
+
+            <!-- Statistics Page -->
+            <section id="stats" class="page">
+                <h2>Audit Statistics</h2>
+                <div class="stats-overview">
+                    <div class="stats-cards">
+                        <div class="card">
+                            <div class="card-icon"><i class="fas fa-globe"></i></div>
+                            <div class="card-content">
+                                <h3>Total Audits</h3>
+                                <p id="stats-total-audits">Loading...</p>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-icon"><i class="fas fa-sitemap"></i></div>
+                            <div class="card-content">
+                                <h3>Unique Sites</h3>
+                                <p id="stats-unique-sites">Loading...</p>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="card-content">
+                                <h3>Passed Audits</h3>
+                                <p id="stats-passed">Loading...</p>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-icon"><i class="fas fa-times-circle"></i></div>
+                            <div class="card-content">
+                                <h3>Failed Audits</h3>
+                                <p id="stats-failed">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-container">
+                    <div class="chart-card full-width">
+                        <h3>Audit Trends Over Time</h3>
+                        <canvas id="stats-trends-chart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Pass/Fail Distribution</h3>
+                        <canvas id="stats-distribution-chart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Top Failure Reasons</h3>
+                        <canvas id="stats-reasons-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2023 Website Auditor. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- Modal for detailed audit view -->
+    <div id="audit-detail-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Audit Details</h2>
+            <div id="modal-content"></div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html> 

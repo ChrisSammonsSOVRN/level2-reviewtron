@@ -1,0 +1,143 @@
+Based on the guidelines and file structure (see  and citeturn0file0), step 2—creating the browser extension—focuses on setting up all the extension components so that it can interact with web pages and the backend. Here’s a breakdown of the tasks along with sample code to help you get started:
+
+1. **Configure the Manifest (Manifest v3):**  
+   Create a manifest.json file that registers your background service worker, content scripts, and UI (popup) page. This file also defines required permissions and host access. For example: 
+
+   ```json
+   {
+     "manifest_version": 3,
+     "name": "Website Auditor Extension",
+     "version": "1.0",
+     "description": "A browser extension for website audits.",
+     "background": {
+       "service_worker": "src/background.js"
+     },
+     "content_scripts": [
+       {
+         "matches": ["<all_urls>"],
+         "js": ["src/content.js"]
+       }
+     ],
+     "action": {
+       "default_popup": "ui/window.html",
+       "default_icon": "icon.png"
+     },
+     "permissions": [
+       "storage",
+       "activeTab",
+       "scripting"
+     ],
+     "host_permissions": [
+       "<all_urls>"
+     ]
+   }
+   ```
+
+2. **Implement the Content Script:**  
+   The content script (content.js) runs in the context of every loaded webpage and is responsible for extracting relevant page content (like text or metadata) that you might need for auditing. For example:
+
+   ```js
+   // src/content.js
+   console.log("Content script loaded on", window.location.href);
+   const pageContent = document.body.innerText;
+   
+   // Send the page content to the background script for further processing
+   chrome.runtime.sendMessage({ action: "extractContent", content: pageContent });
+   ```
+
+3. **Set Up the Background Script:**  
+   The background script (background.js) acts as a central hub for your extension. It listens for messages from the content script, manages API calls via extension-api.js, and may handle other tasks (e.g., caching or complex logic).
+
+   ```js
+   // src/background.js
+   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+     if (message.action === "extractContent") {
+       console.log("Received content from", sender.tab.url);
+       // Optionally, send the content to your backend for auditing
+       // e.g., using fetch or delegating to extension-api.js functions
+     }
+   });
+   ```
+
+4. **Create the Extension API Module:**  
+   The extension-api.js file will abstract calls to your backend audit API. This helps keep your code modular and maintainable.
+
+   ```js
+   // src/extension-api.js
+   async function fetchAuditResults(url) {
+     try {
+       const response = await fetch(`https://your-backend-api/audit?url=${encodeURIComponent(url)}`);
+       if (!response.ok) throw new Error("Network response was not ok");
+       return await response.json();
+     } catch (error) {
+       console.error("Error fetching audit results:", error);
+       return null;
+     }
+   }
+   
+   // Export the function for use in other modules
+   export { fetchAuditResults };
+   ```
+
+5. **Build the UI for Audit Results:**  
+   The UI consists of an HTML file (window.html) and its corresponding JavaScript (window.js) and CSS (styles.css). The HTML file provides a container for audit results, while window.js fetches the audit data (using extension-api.js) and updates the UI.
+
+   **window.html:**
+
+   ```html
+   <!DOCTYPE html>
+   <html>
+   <head>
+     <meta charset="UTF-8">
+     <title>Website Audit Results</title>
+     <link rel="stylesheet" href="styles.css">
+   </head>
+   <body>
+     <div id="results">Loading audit results...</div>
+     <script src="../src/window.js"></script>
+   </body>
+   </html>
+   ```
+
+   **window.js:**
+
+   ```js
+   // src/window.js
+   import { fetchAuditResults } from './extension-api.js';
+
+   // Helper to get the current tab URL (using the chrome API)
+   function getCurrentTabUrl() {
+     return new Promise((resolve, reject) => {
+       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+         if (chrome.runtime.lastError) {
+           reject(chrome.runtime.lastError);
+         } else {
+           resolve(tabs[0].url);
+         }
+       });
+     });
+   }
+
+   document.addEventListener('DOMContentLoaded', async () => {
+     try {
+       const url = await getCurrentTabUrl();
+       const result = await fetchAuditResults(url);
+       document.getElementById("results").innerText = JSON.stringify(result, null, 2);
+     } catch (error) {
+       console.error("Error fetching audit results:", error);
+       document.getElementById("results").innerText = "Error loading audit results.";
+     }
+   });
+   ```
+
+6. **Integrate Logging:**  
+   Use the dedicated logger.js module (as per your file structure) to track performance or errors across your extension scripts. Simply import and call the logger functions where needed to enable consistent logging.
+
+7. **Test the Extension:**  
+   Load your extension into your browser via the extensions page (in developer mode) and check:
+   - That your manifest.json is recognized.
+   - Content script runs on target pages.
+   - Communication between content.js, background.js, and window.js works as expected.
+   - Audit results are properly fetched from your backend and displayed in the popup.
+
+This step-by-step setup aligns with your overall project scope (see citeturn0file2 for tech stack recommendations) and the provided file structure (). Once implemented, the browser extension will extract page data, communicate with the backend for auditing, and present the results to the user—all essential parts of your website auditor product.

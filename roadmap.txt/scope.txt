@@ -1,0 +1,174 @@
+Tech Stack Recommendations
+Backend: Node.js (Express) or Python (FastAPI)
+Database: PostgreSQL (for structured logging & results storage)
+Web Scraping: Puppeteer (Node.js) or Playwright (Python)
+Frontend: React, Next.js (for centralized result display)
+Browser Extension: JavaScript-based (Manifest v3)
+Cloud APIs:
+Google Cloud API (Plagiarism Checker, Image Analysis)
+Custom NLP Model or OpenAI API (Hate Speech Detection)
+Core Features
+URL Analysis (Checks restricted categories, banned GEOs)
+Batch Processing (Group sites into smaller sets)
+Site Loading Checks (Redirects, connection issues, live status)
+Content Recency Check (Sitemap parsing, HTML fallback)
+Hate Speech Analysis (Text-based content moderation)
+Plagiarism Check (Google Cloud API)
+Image Analysis (Google Vision API)
+Ad Presence Analysis (Detecting premium partners)
+Browser Extension (Handles blocked sites)
+SQL Query Generation (Stores results in a database)
+Logging System (Tracks performance and can be toggled on/off)
+Directory Structure
+graphql
+Copy
+Edit
+level2-reviewtron/
+│── backend/                   # Backend API & Server Puppeteering
+│   ├── controllers/           # Business logic (e.g., audit execution)
+│   │   ├── auditController.js 
+│   │   ├── siteController.js
+│   │   ├── adAnalyzer.js
+│   │   ├── plagiarismChecker.js
+│   │   ├── hateSpeechChecker.js
+│   │   ├── imageAnalyzer.js
+│   ├── database/              # Database Models and Queries
+│   │   ├── models.js
+│   │   ├── db.js
+│   ├── middlewares/           # Request handling, validation
+│   ├── routes/                # Express/FastAPI endpoints
+│   ├── services/              # External API calls (Google Cloud, NLP, etc.)
+│   ├── utils/                 # Helper functions
+│   │   ├── logger.js          # Dedicated logging module
+│   ├── app.js                 # Main Express/FastAPI server
+│
+│── frontend/                  # Frontend (React/Next.js)
+│   ├── components/            # Reusable UI components
+│   ├── pages/                 # Main pages
+│   ├── services/              # API calls to backend
+│   ├── utils/                 # Helper functions
+│   ├── App.js                 # Main App component
+│
+|---|browser-extension/
+|   │── src/                          # Main source files
+│       ├── background.js             # Background script (manages extension behavior)
+│       ├── content.js                # Runs in the context of the webpage
+│       ├── extension-api.js          # Handles communication with backend
+│       ├── window.js                 # Manages window-based UI logic
+│       ├── logger.js                 # Dedicated logging module
+│
+│_______|── ui/                           # UI for the extension
+│           ├── window.html               # Main analysis window UI
+│           ├── styles.css                # Styling for window.html
+│
+│── manifest.json                 # Extension metadata
+│── README.md                     # Documentation
+│
+│── scripts/                   # Scraping and Puppeteering
+│   ├── puppeteer-scraper.js   # Puppeteer functions for automation
+│   ├── rotate-agents.js       # Rotates user agents
+│
+│── tests/                     # Unit and integration tests
+│   ├── auditTests.js
+│   ├── siteTests.js
+│   ├── plagiarismTests.js
+│
+│── config/                    # Configuration files
+│   ├── env.js                 # Environment variables
+│
+│── logs/                      # Logs for debugging
+│── .env                       # Environment variables
+│── package.json               # Dependencies (if using Node.js)
+│── requirements.txt           # Dependencies (if using Python)
+│── README.md                  # Documentation
+Logging System (utils/logger.js)
+The logger module will allow detailed tracking of performance and failures.
+It can be easily enabled/disabled by setting LOGGING_ENABLED in the environment.
+
+javascript
+Copy
+Edit
+// utils/logger.js
+const fs = require('fs');
+const path = require('path');
+
+const LOGGING_ENABLED = process.env.LOGGING_ENABLED === 'true'; // Toggle logging via env
+
+const logFilePath = path.join(__dirname, '../logs/audit.log');
+
+function logMessage(message) {
+    if (!LOGGING_ENABLED) return;
+
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] ${message}\n`;
+    console.log(logEntry); // Also log to console for debugging
+
+    // Append log to file
+    fs.appendFile(logFilePath, logEntry, (err) => {
+        if (err) console.error('Error writing to log file', err);
+    });
+}
+
+function logPerformance(checkName, startTime) {
+    if (!LOGGING_ENABLED) return;
+
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    logMessage(`${checkName} completed in ${duration} ms`);
+}
+
+module.exports = { logMessage, logPerformance };
+Logging Integration in Audits
+Example of how logging would work within an audit function:
+
+javascript
+Copy
+Edit
+// controllers/auditController.js
+const { logMessage, logPerformance } = require('../utils/logger');
+
+async function analyzeSite(url) {
+    logMessage(`Starting audit for ${url}`);
+    const startTime = Date.now();
+
+    try {
+        // Basic URL Check
+        if (url.includes("porn") || url.includes("gambling")) {
+            logMessage(`FAIL - Adult content detected in URL: ${url}`);
+            return { status: "fail", reason: "Adult Content" };
+        }
+
+        // Puppeteer test
+        const loadStartTime = Date.now();
+        const page = await browser.newPage();
+        await page.goto(url, { waitUntil: "load", timeout: 10000 });
+        logPerformance("Site Load Test", loadStartTime);
+
+        // Ad Check
+        const adStartTime = Date.now();
+        const adsDetected = await detectAds(page);
+        logPerformance("Ad Detection", adStartTime);
+
+        if (adsDetected < 2) {
+            logMessage(`Human review required - Low ad presence on ${url}`);
+            return { status: "review", reason: "Low Ad Presence" };
+        }
+
+        logPerformance("Total Audit", startTime);
+        return { status: "pass" };
+    } catch (error) {
+        logMessage(`ERROR - Failed to process ${url}: ${error.message}`);
+        return { status: "fail", reason: "Site Load Error" };
+    }
+}
+Logging Data Example
+When logging is enabled, an audit will generate output like this:
+
+yaml
+Copy
+Edit
+[2025-02-27T10:00:00.123Z] Starting audit for example.com
+[2025-02-27T10:00:01.234Z] Site Load Test completed in 1111 ms
+[2025-02-27T10:00:02.345Z] Ad Detection completed in 1111 ms
+[2025-02-27T10:00:02.456Z] Human review required - Low ad presence on example.com
+[2025-02-27T10:00:02.567Z] Total Audit completed in 2444 ms

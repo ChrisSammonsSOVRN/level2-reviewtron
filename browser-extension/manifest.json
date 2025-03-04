@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "Auxilliary site Processor",
+    "version": "1.0",
+    "description": "A browser extension for website audits to work with web app",
+    "background": {
+      "service_worker": "src/background.js",
+      "type": "module"
+    },
+    "content_scripts": [
+      {
+        "matches": ["<all_urls>"],
+        "js": ["src/content.js"],
+        "run_at": "document_end"
+      }
+    ],
+    "action": {
+      "default_popup": "ui/window.html",
+      "default_icon": "icon.png"
+    },
+    "permissions": [
+      "storage",
+      "activeTab",
+      "scripting",
+      "tabs"
+    ],
+    "host_permissions": [
+      "<all_urls>"
+    ]
+  }
+  

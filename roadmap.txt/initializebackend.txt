@@ -1,0 +1,253 @@
+### **📍 Step 1: Initialize the Backend**
+#### 🎯 Goal: Set up a **Node.js Express backend** with **PostgreSQL**, **logging**, and **REST API endpoints** to start auditing websites.
+
+---
+
+## **🛠 Step 1.1: Set Up the Project Directory**
+📌 **Tasks:**
+- [ ] Navigate to `backend/` and initialize a new Node.js project
+- [ ] Create necessary subdirectories
+
+📌 **Commands:**
+```bash
+cd backend
+npm init -y
+mkdir controllers routes database middlewares services utils tests
+touch app.js .env .gitignore
+```
+
+📌 **.gitignore (Important for preventing sensitive files from being committed)**:
+```gitignore
+node_modules/
+.env
+logs/
+```
+
+---
+
+## **🛠 Step 1.2: Install Dependencies**
+📌 **Core Backend Dependencies:**
+```bash
+npm install express dotenv cors helmet
+```
+- **express** → Web framework
+- **dotenv** → Loads environment variables
+- **cors** → Manages Cross-Origin Resource Sharing
+- **helmet** → Secures HTTP headers
+
+📌 **Database Dependencies:**
+```bash
+npm install pg pg-promise
+```
+- **pg** → PostgreSQL driver
+- **pg-promise** → Easier SQL query handling
+
+📌 **Development Dependencies:**
+```bash
+npm install --save-dev nodemon eslint
+```
+- **nodemon** → Auto-restarts server on file changes
+- **eslint** → Ensures code quality
+
+---
+
+## **🛠 Step 1.3: Create the Express Server**
+📌 **File:** `backend/app.js`
+```javascript
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+
+const auditRoutes = require('./routes/auditRoutes');
+const { logMessage } = require('./utils/logger');
+
+const app = express();
+
+app.use(express.json());
+app.use(cors());
+app.use(helmet());
+
+app.use('/audit', auditRoutes); // Mount audit routes
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+    logMessage(`🚀 Server running on port ${PORT}`);
+});
+```
+
+---
+
+## **🛠 Step 1.4: Configure Environment Variables**
+📌 **File:** `backend/.env`
+```ini
+PORT=5000
+DB_USER=your_username
+DB_PASS=your_password
+DB_HOST=localhost
+DB_NAME=audit_db
+DB_PORT=5432
+LOGGING_ENABLED=true
+```
+
+---
+
+## **🛠 Step 1.5: Set Up Database Connection**
+📌 **File:** `backend/database/db.js`
+```javascript
+const { Pool } = require('pg');
+require('dotenv').config();
+
+const pool = new Pool({
+    user: process.env.DB_USER,
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASS,
+    port: process.env.DB_PORT || 5432
+});
+
+module.exports = pool;
+```
+
+📌 **Test Database Connection**
+Create `backend/database/testConnection.js`:
+```javascript
+const pool = require('./db');
+
+pool.query('SELECT NOW()', (err, res) => {
+    if (err) console.error('Database connection error', err);
+    else console.log('✅ Database connected:', res.rows[0]);
+    pool.end();
+});
+```
+
+📌 **Run Test**
+```bash
+node database/testConnection.js
+```
+- ✅ **Success Output:** `"Database connected: { now: 'timestamp' }"`
+- ❌ **Failure:** Check **`.env` credentials**
+
+---
+
+## **🛠 Step 1.6: Implement Logging**
+📌 **File:** `backend/utils/logger.js`
+```javascript
+const fs = require('fs');
+const path = require('path');
+
+const LOGGING_ENABLED = process.env.LOGGING_ENABLED === 'true';
+
+const logFilePath = path.join(__dirname, '../logs/server.log');
+
+function logMessage(message) {
+    if (!LOGGING_ENABLED) return;
+
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] ${message}\n`;
+    console.log(logEntry);
+
+    fs.appendFile(logFilePath, logEntry, (err) => {
+        if (err) console.error('Error writing to log file', err);
+    });
+}
+
+module.exports = { logMessage };
+```
+
+📌 **Modify `app.js` to Use Logger**
+```javascript
+const { logMessage } = require('./utils/logger');
+
+app.listen(PORT, () => {
+    logMessage(`🚀 Server running on port ${PORT}`);
+});
+```
+
+📌 **Run Server:**
+```bash
+node app.js
+```
+- ✅ **Success Output:** `🚀 Server running on port 5000`
+
+---
+
+## **🛠 Step 1.7: Create Audit API Route**
+📌 **File:** `backend/routes/auditRoutes.js`
+```javascript
+const express = require('express');
+const { analyzeURL } = require('../controllers/auditController');
+
+const router = express.Router();
+
+router.post('/url', async (req, res) => {
+    const { url } = req.body;
+    const result = await analyzeURL(url);
+    res.json(result);
+});
+
+module.exports = router;
+```
+
+📌 **File:** `backend/controllers/auditController.js`
+```javascript
+const { logMessage } = require('../utils/logger');
+
+async function analyzeURL(url) {
+    logMessage(`🔍 Analyzing URL: ${url}`);
+
+    const restrictedKeywords = ["porn", "gambling", "cannabis"];
+    if (restrictedKeywords.some((word) => url.includes(word))) {
+        logMessage(`❌ FAIL - Adult Content Detected: ${url}`);
+        return { status: "fail", reason: "Adult Content" };
+    }
+
+    logMessage(`✅ PASS - URL Analysis Completed: ${url}`);
+    return { status: "pass" };
+}
+
+module.exports = { analyzeURL };
+```
+
+📌 **Test API**
+```bash
+curl -X POST http://localhost:5000/audit/url -H "Content-Type: application/json" -d '{"url":"example.com"}'
+```
+- ✅ **Success Response:** `{"status": "pass"}`
+- ❌ **Failure Response (Adult Content Detected):** `{"status": "fail", "reason": "Adult Content"}`
+
+---
+
+## **🛠 Step 1.8: Automate with Nodemon**
+📌 **File:** `backend/package.json` (Add `"start"` script)
+```json
+"scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+}
+```
+
+📌 **Start Development Server**
+```bash
+npm run dev
+```
+- **Auto-restarts** when changes are detected 🎯
+
+---
+
+# **📍 Step 1 Completion Checklist**
+✅ **Project Directory Set Up**  
+✅ **Express Installed & Configured**  
+✅ **PostgreSQL Connected & Tested**  
+✅ **Logging System Implemented**  
+✅ **Basic URL Filtering API Added**  
+✅ **Nodemon Configured for Auto-reloading**  
+
+
+
+Based on your checklist, if you've completed all these steps and your tests (including the API and DB connection tests) are passing, then you're done with Step 1. The backend is now initialized, with the project structure, dependencies, Express server, environment configuration, database connection, logging system, and a basic audit API endpoint all in place.
+
+Your next steps will be to build on this foundation—moving into the advanced features or integration with your frontend/browser extension, as outlined in your roadmap.
+---
+

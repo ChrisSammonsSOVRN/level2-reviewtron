@@ -1,0 +1,13 @@
+/* ui/styles.css */
+body {
+    font-family: Arial, sans-serif;
+    padding: 10px;
+    margin: 0;
+    background-color: #f9f9f9;
+  }
+  
+  #results {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  

@@ -1,0 +1,39 @@
+Comprehensive List of Audit Failure and Pass Reasons
+Based on the codebase I've analyzed, here's a comprehensive list of all possible failure and pass reasons from the various checkers:
+URL and Redirect Checks (Phase 0-1)
+Failed: Banned word detected in URL, code 261
+Failed: External redirect detected, code 277
+Failed: Site failed to load, code 298 (try with browser extension) 
+Failed: Geo-blocking detected, code 298(try with browser extension)
+
+
+Content Recency Check (Phase 2)
+Failed: Content too old (last update > 6 months), code 284
+Failed: No date information found, code 298
+Failed: Unable to extract dates from content, code 284
+
+Hate Speech Detection
+Failed: Hate speech detected (high confidence), code 272
+Failed: Multiple instances of concerning content, code 272
+Failed: Explicit harmful content detected, 272
+
+Plagiarism Check
+Failed: Content similarity above 85% threshold, code 64
+Failed: Multiple paragraphs appear to be plagiarized, code 64
+Failed: Unable to verify content originality, code 64
+
+Image Analysis
+Failed: Adult content detected in images, code 272
+Failed: Violent content detected in images, code 272
+Failed: Inappropriate imagery detected, code 272
+
+Ad Presence Analysis
+Failed: No ad implementation detected, code 298
+Failed: Insufficient premium ad partners, code 298
+Review: Ad activity without premium networks
+Review: No ad activity detected
+
+General System Failures
+Failed: Timeout during analysis,code 298 (try with browser extension)
+Failed: Unable to access site content, code 298 (try with browser extension)
+Failed: Technical error during analysis, code 298 (try with browser extension)

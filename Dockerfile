@@ -20,8 +20,9 @@ RUN npm install express cors pg puppeteer-core
 # Create logs directory
 RUN mkdir -p logs
 
-# Copy the robust server file
-COPY backend/robust-server.js ./
+# Copy the server files
+COPY backend/full-server.js ./
+COPY backend/db-setup.js ./
 
 # Set environment variables
 ENV PORT=8080
@@ -31,5 +32,5 @@ ENV NODE_ENV=production
 # Expose the port
 EXPOSE 8080
 
-# Start the robust server
-CMD ["node", "robust-server.js"] 
+# Start the full server
+CMD ["node", "full-server.js"] 

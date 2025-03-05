@@ -449,7 +449,7 @@ async function auditUrl(req, res) {
     }
     
     try {
-        // Launch browser
+        // Launch browser with updated configuration
         browser = await puppeteer.launch({
             executablePath: process.env.NODE_ENV === 'production' 
               ? '/usr/bin/google-chrome-stable'  // Path to Chrome on Render
@@ -459,7 +459,8 @@ async function auditUrl(req, res) {
                   ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' // Windows
                   : '/usr/bin/google-chrome', // Linux
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-            headless: "new"
+            headless: "new",
+            ignoreDefaultArgs: ['--disable-extensions']
         });
         
         // Create new page

@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const { logMessage } = require('../utils/logger');
 
 class AdAnalyzer {
@@ -129,10 +129,7 @@ class AdAnalyzer {
         try {
             logMessage(`[AdAnalyzer] ========== Starting ad analysis for ${url} ==========`);
             
-            browser = await puppeteer.launch({
-                headless: 'new',
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
-            });
+            browser = await this.launchBrowser();
 
             const page = await browser.newPage();
             
@@ -554,6 +551,21 @@ class AdAnalyzer {
             status: "failed",
             message: "Insufficient premium ad partners"
         };
+    }
+
+    async launchBrowser() {
+        return await puppeteer.launch({
+            executablePath: process.env.NODE_ENV === 'production' 
+              ? '/usr/bin/google-chrome-stable'  // Path to Chrome on Render
+              : process.platform === 'darwin' 
+                ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' // Mac
+                : process.platform === 'win32'
+                  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' // Windows
+                  : '/usr/bin/google-chrome', // Linux
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+            headless: "new",
+            ignoreDefaultArgs: ['--disable-extensions']
+        });
     }
 }
 

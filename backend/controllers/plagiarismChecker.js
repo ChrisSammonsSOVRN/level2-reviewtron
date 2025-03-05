@@ -1,5 +1,5 @@
 const axios = require('axios');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const { logMessage } = require('../utils/logger');
 const path = require('path');
 
@@ -127,16 +127,7 @@ class PlagiarismChecker {
             logMessage(`[PlagiarismChecker] Extracting content from URL: ${url}`);
             
             // Launch Puppeteer with proper configurations
-            browser = await puppeteer.launch({
-                headless: 'new',
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--disable-gpu'
-                ]
-            });
+            browser = await this.launchBrowser();
             
             // Open a new page and set the environment
             const page = await browser.newPage();
@@ -243,6 +234,21 @@ class PlagiarismChecker {
                 logMessage(`[PlagiarismChecker] Browser closed`);
             }
         }
+    }
+
+    async launchBrowser() {
+        return await puppeteer.launch({
+            executablePath: process.env.NODE_ENV === 'production' 
+                ? '/usr/bin/google-chrome-stable'  // Path to Chrome on Render
+                : process.platform === 'darwin' 
+                    ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' // Mac
+                    : process.platform === 'win32'
+                        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' // Windows
+                        : '/usr/bin/google-chrome', // Linux
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+            headless: "new",
+            ignoreDefaultArgs: ['--disable-extensions']
+        });
     }
 
     /**

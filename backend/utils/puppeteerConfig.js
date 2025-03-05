@@ -65,51 +65,27 @@ function findChromeExecutable() {
  * @returns {Object} Puppeteer launch options
  */
 function getPuppeteerLaunchOptions() {
-    // For Render.com deployment
-    if (process.env.NODE_ENV === 'production') {
-        logMessage('[PuppeteerConfig] Using Puppeteer configuration for production environment');
-        
-        const chromePath = findChromeExecutable();
-        const chromeExists = fs.existsSync(chromePath);
-        
-        if (!chromeExists) {
-            logMessage(`[PuppeteerConfig] WARNING: Chrome not found at ${chromePath}`);
-        }
-        
-        return {
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--disable-software-rasterizer',
-                '--single-process',
-                '--no-zygote',
-                '--no-first-run'
-            ],
-            headless: true,
-            ignoreHTTPSErrors: true,
-            executablePath: chromePath,
-            // Add a flag to indicate if Chrome actually exists
-            _chromeExists: chromeExists
-        };
+    const isProduction = process.env.NODE_ENV === 'production';
+    const chromePath = process.env.CHROME_BIN || '/usr/bin/chromium-browser';
+
+    // Check if Chrome exists
+    const chromeExists = fs.existsSync(chromePath);
+    if (!chromeExists) {
+        logMessage(`[PuppeteerConfig] WARNING: Chrome not found at ${chromePath}`, 'warn');
     }
-    
-    // For local development
-    logMessage('[PuppeteerConfig] Using Puppeteer configuration for local environment');
-    const localChromePath = process.platform === 'darwin' 
-        ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' // Mac
-        : process.platform === 'win32'
-            ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' // Windows
-            : '/usr/bin/google-chrome'; // Linux
-            
+
     return {
-        executablePath: localChromePath,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-        headless: "new",
-        ignoreDefaultArgs: ['--disable-extensions'],
-        // Add a flag to indicate if Chrome actually exists
-        _chromeExists: fs.existsSync(localChromePath)
+        headless: 'new',
+        executablePath: chromePath,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--disable-gpu',
+            '--disable-software-rasterizer'
+        ],
+        _chromeExists: chromeExists
     };
 }
 

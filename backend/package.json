@@ -9,8 +9,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "preinstall": "echo 'Installing with Chrome'",
-    "postinstall": "apt-get update && apt-get install -y chromium && which chromium"
+    "postinstall": "apt-get update && apt-get install -y chromium-browser && which chromium-browser"
   },
   "engines": {
     "node": "18.x"
@@ -30,7 +29,6 @@
     "pg": "^8.11.3",
     "pg-promise": "^11.10.2",
     "xml2js": "^0.6.2",
-    "puppeteer": "^21.0.0",
     "puppeteer-core": "^21.0.0"
   },
   "devDependencies": {

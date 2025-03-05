@@ -15,47 +15,32 @@ function getPuppeteerLaunchOptions() {
     if (process.env.NODE_ENV === 'production') {
         logMessage('[PuppeteerConfig] Using Puppeteer configuration for production environment');
         
-        // Standard paths to check for Chromium
-        const chromePaths = [
-            '/usr/bin/chromium',
-            '/usr/bin/chromium-browser',
-            '/usr/bin/google-chrome-stable',
-            '/usr/bin/google-chrome'
-        ];
+        // Try to find chromium-browser which we installed in postinstall
+        const chromiumPath = '/usr/bin/chromium-browser';
         
-        // Find the first existing Chrome executable
-        let executablePath = null;
-        for (const path of chromePaths) {
-            if (fs.existsSync(path)) {
-                executablePath = path;
-                logMessage(`[PuppeteerConfig] Found Chrome at: ${path}`);
-                break;
-            }
+        // Log whether the path exists
+        if (fs.existsSync(chromiumPath)) {
+            logMessage(`[PuppeteerConfig] Found Chromium at: ${chromiumPath}`);
+        } else {
+            logMessage(`[PuppeteerConfig] WARNING: Chromium not found at ${chromiumPath}`, 'warn');
         }
         
-        const options = {
+        return {
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--disable-software-rasterizer',
+                '--disable-features=site-per-process',
+                '--disable-extensions',
+                '--disable-web-security',
+                '--single-process'
             ],
-            headless: "new",
-            ignoreHTTPSErrors: true
+            headless: true, // Use the old headless mode
+            ignoreHTTPSErrors: true,
+            executablePath: chromiumPath
         };
-        
-        // Only set executablePath if we found a Chrome executable
-        if (executablePath) {
-            options.executablePath = executablePath;
-        } else {
-            logMessage(`[PuppeteerConfig] No Chrome executable found, Puppeteer will try to find Chrome itself`, 'warn');
-        }
-        
-        return options;
     }
     
     // For local development

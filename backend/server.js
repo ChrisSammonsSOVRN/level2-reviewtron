@@ -7,7 +7,7 @@ const db = require('./db/database');
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 5000;
+const port = process.env.PORT || 8080;
 
 // Middleware
 app.use(cors());
@@ -39,8 +39,8 @@ app.get('/', (req, res) => {
 db.initDatabase()
     .then(() => {
         // Start server
-        app.listen(PORT, () => {
-            logMessage(`Server running on port ${PORT}`);
+        app.listen(port, () => {
+            logMessage(`Server running on port ${port}`);
         });
     })
     .catch(error => {

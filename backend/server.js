@@ -7,7 +7,7 @@ const db = require('./db/database');
 
 // Initialize Express app
 const app = express();
-const port = process.env.PORT || 8080;
+const port = parseInt(process.env.PORT) || 8080;
 
 // Middleware
 app.use(cors());
@@ -33,6 +33,8 @@ app.get('/', (req, res) => {
     res.json({
         message: 'Website Auditor API',
         version: '1.0.0',
+        status: 'running',
+        port: port,
         endpoints: {
             audit: '/audit/url',
             history: '/history/latest'
@@ -41,8 +43,8 @@ app.get('/', (req, res) => {
 });
 
 // Start server first, then initialize database
-const server = app.listen(port, () => {
-    logMessage(`Server running on port ${port}`);
+const server = app.listen(port, '0.0.0.0', () => {
+    logMessage(`Server running on http://0.0.0.0:${port}`);
     
     // Initialize database after server is running
     db.initDatabase()

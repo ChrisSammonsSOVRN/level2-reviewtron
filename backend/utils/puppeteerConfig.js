@@ -66,17 +66,37 @@ function findChromeExecutable() {
  */
 function getPuppeteerLaunchOptions() {
     const isProduction = process.env.NODE_ENV === 'production';
-    const chromePath = process.env.CHROME_BIN || '/usr/bin/chromium-browser';
+    
+    // Define possible Chrome paths in order of preference
+    const chromePaths = [
+        process.env.CHROME_BIN,
+        '/usr/bin/chromium',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        // Render.com Nix path - this is typically where Chrome is installed
+        '/nix/store/x205pbkd5xh5g4iv0n41vgpn3q0a2wmw-chromium-108.0.5359.94/bin/chromium'
+    ];
 
-    // Check if Chrome exists
-    const chromeExists = fs.existsSync(chromePath);
-    if (!chromeExists) {
-        logMessage(`[PuppeteerConfig] WARNING: Chrome not found at ${chromePath}`, 'warn');
+    // Find the first existing Chrome path
+    let executablePath = null;
+    for (const path of chromePaths) {
+        if (path && fs.existsSync(path)) {
+            executablePath = path;
+            logMessage(`[PuppeteerConfig] Found Chrome at: ${path}`);
+            break;
+        }
     }
 
-    return {
+    if (!executablePath) {
+        logMessage(`[PuppeteerConfig] WARNING: No Chrome installation found in any standard location`, 'warn');
+        // Default to chromium-browser as a last resort
+        executablePath = '/usr/bin/chromium-browser';
+    }
+
+    const options = {
         headless: 'new',
-        executablePath: chromePath,
+        executablePath,
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -84,9 +104,11 @@ function getPuppeteerLaunchOptions() {
             '--disable-accelerated-2d-canvas',
             '--disable-gpu',
             '--disable-software-rasterizer'
-        ],
-        _chromeExists: chromeExists
+        ]
     };
+
+    logMessage(`[PuppeteerConfig] Configured Puppeteer with executablePath: ${executablePath}`);
+    return options;
 }
 
 module.exports = {

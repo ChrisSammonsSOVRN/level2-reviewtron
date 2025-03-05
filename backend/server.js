@@ -56,24 +56,53 @@ app.get('/', (req, res) => {
         version: '1.0.0',
         status: 'running',
         port: port,
-        env: process.env.NODE_ENV || 'development',
-        endpoints: {
-            audit: '/audit/url',
-            history: '/history/latest'
-        }
+        env: process.env.NODE_ENV || 'development'
     });
 });
 
-// Error route for testing
+// Debug route
 app.get('/debug', (req, res) => {
     console.log('Debug endpoint called');
     res.json({
-        env: process.env,
+        env: {
+            NODE_ENV: process.env.NODE_ENV,
+            PORT: process.env.PORT,
+            CHROME_BIN: process.env.CHROME_BIN
+        },
         cwd: process.cwd(),
         nodeVersion: process.version,
         platform: process.platform,
         memoryUsage: process.memoryUsage()
     });
+});
+
+// Chrome test route
+app.get('/chrome-test', async (req, res) => {
+    console.log('Chrome test endpoint called');
+    try {
+        const fs = require('fs');
+        const chromePath = process.env.CHROME_BIN || '/usr/bin/google-chrome-stable';
+        
+        const exists = fs.existsSync(chromePath);
+        const stats = exists ? fs.statSync(chromePath) : null;
+        
+        res.json({
+            chromePath,
+            exists,
+            stats: stats ? {
+                size: stats.size,
+                isFile: stats.isFile(),
+                permissions: stats.mode.toString(8),
+                uid: stats.uid,
+                gid: stats.gid
+            } : null
+        });
+    } catch (error) {
+        res.status(500).json({
+            error: error.message,
+            stack: error.stack
+        });
+    }
 });
 
 // Start server immediately

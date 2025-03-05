@@ -665,71 +665,106 @@ async function auditUrl(req, res) {
 
 /**
  * Store audit result in database
- * @param {Object} auditResult - Audit result object
- * @returns {Promise<Object>} - Database operation result
+ * @param {Object} auditResult - The audit result object
  */
 async function storeAuditResult(auditResult) {
     try {
-        // Generate SQL for audit result
-        const sqlResult = sqlGenerator.generateSQLForAudit(auditResult);
+        logMessage(`[AuditController] Storing audit result for ${auditResult.url}`);
         
-        if (!sqlResult.success) {
-            throw new Error(`Failed to generate SQL: ${sqlResult.error}`);
+        // Generate SQL for audit result
+        const auditResultSQL = sqlGenerator.generateAuditResultSQL(auditResult);
+        
+        // Start building the complete SQL
+        let sql = auditResultSQL.sql;
+        let values = [...auditResultSQL.values];
+        
+        // Add SQL for each check result
+        const checks = auditResult.checks || {};
+        let paramIndex = values.length + 1;
+        
+        // Process hate speech check
+        if (checks.hateSpeech) {
+            const status = checks.hateSpeech.status === 'error' ? 'failed' : checks.hateSpeech.status;
+            sql += `
+INSERT INTO audit_check_results (url, timestamp, check_name, status, reason, details)
+VALUES ($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5});`;
+            values.push(
+                auditResult.url,
+                auditResult.timestamp,
+                'hateSpeech',
+                status,
+                checks.hateSpeech.reason || null,
+                JSON.stringify(checks.hateSpeech.details || null)
+            );
+            paramIndex += 6;
         }
         
-        // Execute transaction
-        const result = await db.transaction(async (client) => {
-            // Extract domain from URL
-            const url = new URL(auditResult.url);
-            const domain = url.hostname;
-            
-            // Store site information
-            const siteResult = await client.query(
-                'INSERT INTO sites (url, domain) VALUES ($1, $2) ON CONFLICT (url) DO UPDATE SET domain = $2 RETURNING id',
-                [auditResult.url, domain]
+        // Process plagiarism check
+        if (checks.plagiarism) {
+            const status = checks.plagiarism.status === 'error' ? 'failed' : checks.plagiarism.status;
+            sql += `
+INSERT INTO audit_check_results (url, timestamp, check_name, status, reason, details)
+VALUES ($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5});`;
+            values.push(
+                auditResult.url,
+                auditResult.timestamp,
+                'plagiarism',
+                status,
+                checks.plagiarism.reason || null,
+                JSON.stringify(checks.plagiarism.details || null)
             );
-            
-            const siteId = siteResult.rows[0].id;
-            
-            // Store audit result
-            const auditInsertResult = await client.query(
-                `INSERT INTO audit_results 
-                (site_id, timestamp, title, description, screenshot) 
-                VALUES ($1, $2, $3, $4, $5) 
-                RETURNING id`,
-                [
-                    siteId,
-                    auditResult.timestamp,
-                    auditResult.title || '',
-                    auditResult.description || '',
-                    auditResult.screenshot || null
-                ]
-            );
-            
-            const auditId = auditInsertResult.rows[0].id;
-            
-            // Store check results
-            for (const check of auditResult.checks) {
-                await client.query(
-                    `INSERT INTO audit_check_results 
-                    (audit_id, check_name, status, details) 
-                    VALUES ($1, $2, $3, $4)`,
-                    [
-                        auditId,
-                        check.name,
-                        check.status,
-                        JSON.stringify(check.details || {})
-                    ]
-                );
-            }
-            
-            return { success: true, auditId };
-        });
+            paramIndex += 6;
+        }
         
-        return result;
+        // Process images check
+        if (checks.images) {
+            const status = checks.images.status === 'error' ? 'failed' : 
+                          checks.images.status === 'pass' ? 'passed' : checks.images.status;
+            sql += `
+INSERT INTO audit_check_results (url, timestamp, check_name, status, reason, details)
+VALUES ($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5});`;
+            values.push(
+                auditResult.url,
+                auditResult.timestamp,
+                'images',
+                status,
+                checks.images.reason || null,
+                JSON.stringify(checks.images.details || null)
+            );
+            paramIndex += 6;
+        }
+        
+        // Process ads check
+        if (checks.ads) {
+            const status = checks.ads.status === 'error' ? 'failed' : checks.ads.status;
+            sql += `
+INSERT INTO audit_check_results (url, timestamp, check_name, status, reason, details)
+VALUES ($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5});`;
+            values.push(
+                auditResult.url,
+                auditResult.timestamp,
+                'ads',
+                status,
+                checks.ads.reason || null,
+                JSON.stringify(checks.ads.details || null)
+            );
+            paramIndex += 6;
+        }
+        
+        // Finish the transaction
+        sql += `
+COMMIT;`;
+        
+        // Log the SQL for debugging
+        logMessage(`[AuditController] Generated SQL for audit of ${auditResult.url}`);
+        
+        // Execute the SQL
+        await db.query(sql, values);
+        logMessage(`[AuditController] Successfully stored audit result for ${auditResult.url}`);
     } catch (error) {
-        logMessage(`Database error in storeAuditResult: ${error.message}`, 'error');
-        throw new Error(`Database error: ${error.message}`);
+        logMessage(`[AuditController] Error storing audit result in database: ${error.message}`, 'error');
+        console.error('Failed query: \n' + error.query);
+        throw error;
     }
 }
 

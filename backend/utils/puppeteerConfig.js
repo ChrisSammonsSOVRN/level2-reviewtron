@@ -72,6 +72,10 @@ function getPuppeteerLaunchOptions() {
         const chromePath = findChromeExecutable();
         const chromeExists = fs.existsSync(chromePath);
         
+        if (!chromeExists) {
+            logMessage(`[PuppeteerConfig] WARNING: Chrome not found at ${chromePath}`);
+        }
+        
         return {
             args: [
                 '--no-sandbox',

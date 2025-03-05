@@ -15,8 +15,8 @@ function getPuppeteerLaunchOptions() {
     if (process.env.NODE_ENV === 'production') {
         logMessage('[PuppeteerConfig] Using Puppeteer configuration for production environment');
         
-        // Try to find chromium-browser which we installed in postinstall
-        const chromiumPath = '/usr/bin/chromium-browser';
+        // Try to find chromium which we installed in postinstall
+        const chromiumPath = '/usr/bin/chromium';
         
         // Log whether the path exists
         if (fs.existsSync(chromiumPath)) {
@@ -32,12 +32,11 @@ function getPuppeteerLaunchOptions() {
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
                 '--disable-software-rasterizer',
-                '--disable-features=site-per-process',
-                '--disable-extensions',
-                '--disable-web-security',
-                '--single-process'
+                '--single-process',
+                '--no-zygote',
+                '--no-first-run'
             ],
-            headless: true, // Use the old headless mode
+            headless: true,
             ignoreHTTPSErrors: true,
             executablePath: chromiumPath
         };

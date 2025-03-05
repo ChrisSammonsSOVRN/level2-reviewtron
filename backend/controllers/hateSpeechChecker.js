@@ -54,11 +54,20 @@ class HateSpeechChecker {
             // Extract content from URL
             const content = await this.extractContent(url);
             
+            // Check if content is an error object
+            if (content && typeof content === 'object' && content.status === 'error') {
+                logMessage(`[HateSpeechChecker] Content extraction failed: ${content.details}`, 'warn');
+                return {
+                    status: 'warning',
+                    reason: content.reason || 'Processing error',
+                    details: content.details || 'Failed to extract content from the page'
+                };
+            }
+            
             if (!content || content.length < 10) {
                 logMessage(`[HateSpeechChecker] No content extracted from URL: ${url}`, 'warn');
                 return {
-                    url,
-                    status: "error",
+                    status: "warning",
                     reason: "No content extracted",
                     details: "Could not extract meaningful content from the provided URL"
                 };
@@ -75,8 +84,7 @@ class HateSpeechChecker {
                 const contextContent = this.extractContext(content, quickScanResults);
                 
                 return {
-                    url,
-                    status: "fail",
+                    status: "failed",
                     reason: "Problematic content detected",
                     details: `Found ${quickScanResults.length} instances of problematic phrases`,
                     problematicPhrases: quickScanResults
@@ -97,8 +105,7 @@ class HateSpeechChecker {
         } catch (error) {
             logMessage(`[HateSpeechChecker] Error checking content: ${error.message}`, 'error');
             return {
-                url,
-                status: "error",
+                status: "warning",
                 reason: "Processing error",
                 details: error.message
             };
@@ -107,6 +114,13 @@ class HateSpeechChecker {
 
     quickScan(content) {
         const foundPhrases = [];
+        
+        // Ensure content is a string
+        if (!content || typeof content !== 'string') {
+            logMessage(`[HateSpeechChecker] Cannot scan non-string content: ${typeof content}`, 'warn');
+            return foundPhrases;
+        }
+        
         const lowerContent = content.toLowerCase();
 
         this.problematicPhrases.forEach(phrase => {
@@ -125,54 +139,19 @@ class HateSpeechChecker {
     }
 
     extractContext(content, quickScanResults) {
-        // Get content around problematic phrases with context
-        const contexts = quickScanResults.map(result => {
-            const start = Math.max(0, result.index - 100);
-            const end = Math.min(content.length, result.index + 100);
-            return content.substring(start, end);
-        });
+        try {
+            // Get content around problematic phrases with context
+            const contexts = quickScanResults.map(result => {
+                const start = Math.max(0, result.index - 100);
+                const end = Math.min(content.length, result.index + 100);
+                return content.substring(start, end);
+            });
 
-        return contexts.join(' ');
-    }
-    
-    /**
-     * Intelligently truncates text to a specified character limit while preserving natural sentence boundaries
-     * @param {string} text - The text to truncate
-     * @param {number} maxLength - Maximum character length (default: 500)
-     * @returns {string} - Truncated text
-     */
-    truncateText(text, maxLength = 500) {
-        logMessage(`[HateSpeechChecker] Truncating text from ${text.length} characters to max ${maxLength}`);
-        
-        // If text is already shorter than the limit, return it as is
-        if (text.length <= maxLength) {
-            return text;
+            return contexts.join(' ');
+        } catch (error) {
+            logMessage(`[HateSpeechChecker] Error extracting context: ${error.message}`, 'error');
+            return '';
         }
-        
-        // Get the first maxLength characters
-        const truncated = text.substring(0, maxLength);
-        
-        // Find the last sentence-ending punctuation
-        const lastPeriodIndex = truncated.lastIndexOf('.');
-        const lastQuestionIndex = truncated.lastIndexOf('?');
-        const lastExclamationIndex = truncated.lastIndexOf('!');
-        
-        // Find the maximum of these indices (the last sentence boundary)
-        const indices = [lastPeriodIndex, lastQuestionIndex, lastExclamationIndex]
-            .filter(index => index > 0);
-        
-        if (indices.length === 0) {
-            // No sentence boundary found, return simple truncation with ellipsis
-            logMessage(`[HateSpeechChecker] No sentence boundary found, using simple truncation`);
-            return truncated + '...';
-        }
-        
-        const lastSentenceEnd = Math.max(...indices);
-        
-        // Return text up to the last sentence boundary plus ellipsis
-        const result = text.substring(0, lastSentenceEnd + 1) + '...';
-        logMessage(`[HateSpeechChecker] Truncated text to ${result.length} characters at natural boundary`);
-        return result;
     }
 
     async extractContent(url) {
@@ -180,21 +159,19 @@ class HateSpeechChecker {
         try {
             logMessage(`[HateSpeechChecker] Extracting content from URL: ${url}`);
             
-            // Get Puppeteer launch options
-            const launchOptions = getPuppeteerLaunchOptions();
-            
-            // Check if Chrome executable was found
-            if (!launchOptions._chromeExists) {
-                logMessage('[HateSpeechChecker] Chrome executable not found, cannot launch browser', 'error');
-                return {
-                    status: 'error',
-                    reason: 'Chrome not found',
-                    details: 'Chrome executable not found on server. Please contact support.'
-                };
-            }
-            
             // Launch Puppeteer with proper configurations
-            browser = await puppeteer.launch(launchOptions);
+            browser = await puppeteer.launch({
+                headless: 'new',
+                executablePath: process.env.CHROME_BIN || '/usr/bin/chromium-browser',
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--disable-gpu',
+                    '--disable-software-rasterizer'
+                ]
+            });
             
             // Open a new page and set the environment
             const page = await browser.newPage();
@@ -293,45 +270,53 @@ class HateSpeechChecker {
             return content;
         } catch (error) {
             logMessage(`[HateSpeechChecker] Error extracting content: ${error.message}`, 'error');
-            throw error;
+            return {
+                status: 'error',
+                reason: 'Processing error',
+                details: error.message
+            };
         } finally {
             // Close the browser
             if (browser) {
-                await browser.close();
-                logMessage(`[HateSpeechChecker] Browser closed`);
+                try {
+                    await browser.close();
+                    logMessage(`[HateSpeechChecker] Browser closed`);
+                } catch (error) {
+                    logMessage(`[HateSpeechChecker] Error closing browser: ${error.message}`, 'warn');
+                }
             }
         }
     }
 
     splitContent(content, maxChunkSize = 1000) {
-        // Split content into chunks for API processing
-        const chunks = [];
-        let currentChunk = '';
-        
-        const sentences = content.split(/(?<=[.!?])\s+/);
-        
-        for (const sentence of sentences) {
-            if (currentChunk.length + sentence.length > maxChunkSize) {
-                chunks.push(currentChunk);
-                currentChunk = sentence;
-            } else {
-                currentChunk += (currentChunk ? ' ' : '') + sentence;
+        try {
+            // Split content into chunks for API processing
+            const chunks = [];
+            let currentChunk = '';
+            
+            const sentences = content.split(/(?<=[.!?])\s+/);
+            
+            for (const sentence of sentences) {
+                if (currentChunk.length + sentence.length > maxChunkSize) {
+                    chunks.push(currentChunk);
+                    currentChunk = sentence;
+                } else {
+                    currentChunk += (currentChunk ? ' ' : '') + sentence;
+                }
             }
+            
+            if (currentChunk) {
+                chunks.push(currentChunk);
+            }
+            
+            logMessage(`[HateSpeechChecker] Split content into ${chunks.length} chunks for analysis`);
+            return chunks;
+        } catch (error) {
+            logMessage(`[HateSpeechChecker] Error splitting content: ${error.message}`, 'error');
+            return [content]; // Return original content as single chunk
         }
-        
-        if (currentChunk) {
-            chunks.push(currentChunk);
-        }
-        
-        logMessage(`[HateSpeechChecker] Split content into ${chunks.length} chunks for analysis`);
-        return chunks;
     }
 
-    /**
-     * Analyzes text chunks for hate speech
-     * @param {Array} chunks - Array of text chunks
-     * @returns {Promise<Array>} - Analysis results
-     */
     async analyzeTextChunks(chunks) {
         // Limit chunks to maxHateSpeechApiCalls
         const chunksToAnalyze = chunks.slice(0, this.maxHateSpeechApiCalls);
@@ -391,18 +376,10 @@ class HateSpeechChecker {
         return results;
     }
 
-    /**
-     * Evaluates hate speech check results
-     * @param {Array} results - Analysis results
-     * @param {string} url - The URL being checked
-     * @param {Array} quickScanResults - Results from quick scan
-     * @returns {Object} - Evaluation result
-     */
     evaluateResults(results, url, quickScanResults = []) {
         logMessage(`[HateSpeechChecker] Evaluating analysis results`);
         
         const response = {
-            url,
             analyzed: true,
             quickScanResults,
             analysis: {
@@ -411,13 +388,13 @@ class HateSpeechChecker {
             },
         };
         
-        // If no results were obtained, return error
+        // If no results were obtained, return warning
         if (!results || results.length === 0) {
             logMessage(`[HateSpeechChecker] No analysis results to evaluate`, 'warn');
             return {
                 ...response,
-                status: "error",
-                reason: "Analysis failed",
+                status: "warning",
+                reason: "Analysis limitation",
                 details: "Could not obtain analysis results from the NLP API"
             };
         }
@@ -449,7 +426,7 @@ class HateSpeechChecker {
             logMessage(`[HateSpeechChecker] No hate speech detected in NLP analysis`);
             return {
                 ...response,
-                status: "pass",
+                status: "passed",
                 reason: "No hate speech detected",
                 details: "NLP content analysis shows no indicators of hate speech"
             };
@@ -458,14 +435,50 @@ class HateSpeechChecker {
         logMessage(`[HateSpeechChecker] Hate speech detected through NLP analysis`);
         return {
             ...response,
-            status: "fail",
+            status: "failed",
             reason: "Hate speech detected",
             details: "NLP analysis found indicators of potentially harmful content"
         };
     }
 
-    async launchBrowser() {
-        return await puppeteer.launch(getPuppeteerLaunchOptions());
+    /**
+     * Intelligently truncates text to a specified character limit while preserving natural sentence boundaries
+     * @param {string} text - The text to truncate
+     * @param {number} maxLength - Maximum character length (default: 500)
+     * @returns {string} - Truncated text
+     */
+    truncateText(text, maxLength = 500) {
+        logMessage(`[HateSpeechChecker] Truncating text from ${text.length} characters to max ${maxLength}`);
+        
+        // If text is already shorter than the limit, return it as is
+        if (text.length <= maxLength) {
+            return text;
+        }
+        
+        // Get the first maxLength characters
+        const truncated = text.substring(0, maxLength);
+        
+        // Find the last sentence-ending punctuation
+        const lastPeriodIndex = truncated.lastIndexOf('.');
+        const lastQuestionIndex = truncated.lastIndexOf('?');
+        const lastExclamationIndex = truncated.lastIndexOf('!');
+        
+        // Find the maximum of these indices (the last sentence boundary)
+        const indices = [lastPeriodIndex, lastQuestionIndex, lastExclamationIndex]
+            .filter(index => index > 0);
+        
+        if (indices.length === 0) {
+            // No sentence boundary found, return simple truncation with ellipsis
+            logMessage(`[HateSpeechChecker] No sentence boundary found, using simple truncation`);
+            return truncated + '...';
+        }
+        
+        const lastSentenceEnd = Math.max(...indices);
+        
+        // Return text up to the last sentence boundary plus ellipsis
+        const result = text.substring(0, lastSentenceEnd + 1) + '...';
+        logMessage(`[HateSpeechChecker] Truncated text to ${result.length} characters at natural boundary`);
+        return result;
     }
 }
 

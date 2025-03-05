@@ -19,6 +19,11 @@ app.use((req, res, next) => {
     next();
 });
 
+// Health check endpoint for Cloud Run
+app.get('/_health', (req, res) => {
+    res.status(200).send('OK');
+});
+
 // Routes
 app.use('/audit', auditRoutes);
 app.use('/history', historyRoutes);
@@ -35,18 +40,20 @@ app.get('/', (req, res) => {
     });
 });
 
-// Initialize database before starting server
-db.initDatabase()
-    .then(() => {
-        // Start server
-        app.listen(port, () => {
-            logMessage(`Server running on port ${port}`);
+// Start server first, then initialize database
+const server = app.listen(port, () => {
+    logMessage(`Server running on port ${port}`);
+    
+    // Initialize database after server is running
+    db.initDatabase()
+        .then(() => {
+            logMessage('Database initialized successfully');
+        })
+        .catch(error => {
+            logMessage(`Warning: Database initialization failed: ${error.message}`, 'warn');
+            // Don't exit process, let the server continue running
         });
-    })
-    .catch(error => {
-        logMessage(`Failed to initialize database: ${error.message}`, 'error');
-        process.exit(1);
-    });
+});
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (error) => {
@@ -58,5 +65,8 @@ process.on('unhandledRejection', (error) => {
 process.on('uncaughtException', (error) => {
     logMessage(`Uncaught Exception: ${error.message}`, 'error');
     console.error(error);
-    process.exit(1);
+    // Don't exit immediately, give time for cleanup
+    server.close(() => {
+        process.exit(1);
+    });
 }); 

@@ -26,7 +26,7 @@ function getPuppeteerLaunchOptions() {
             ],
             headless: "new",
             ignoreHTTPSErrors: true,
-            // Don't specify executablePath for Render - let Puppeteer find Chrome
+            // Don't specify executablePath - let Puppeteer use its built-in Chrome
         };
     }
     

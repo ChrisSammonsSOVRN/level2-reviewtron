@@ -14,18 +14,22 @@ RUN apt-get update \
 # Set working directory
 WORKDIR /app
 
-# Install Express and Puppeteer
-RUN npm install express puppeteer-core
+# Install dependencies
+RUN npm install express cors pg puppeteer-core
 
-# Copy the test server file
-COPY backend/puppeteer-test.js ./
+# Create logs directory
+RUN mkdir -p logs
+
+# Copy the robust server file
+COPY backend/robust-server.js ./
 
 # Set environment variables
 ENV PORT=8080
 ENV CHROME_BIN=/usr/bin/google-chrome-stable
+ENV NODE_ENV=production
 
 # Expose the port
 EXPOSE 8080
 
-# Start the test server
-CMD ["node", "puppeteer-test.js"] 
+# Start the robust server
+CMD ["node", "robust-server.js"] 

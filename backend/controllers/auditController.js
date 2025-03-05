@@ -450,8 +450,66 @@ async function auditUrl(req, res) {
     }
     
     try {
+        // Get Puppeteer launch options
+        const launchOptions = getPuppeteerLaunchOptions();
+        
+        // Check if Chrome executable was found
+        if (!launchOptions.executablePath) {
+            logMessage('[AuditController] Chrome executable not found, cannot launch browser', 'error');
+            
+            // Return a partial result with error information
+            const errorResult = {
+                url: url,
+                timestamp: new Date().toISOString(),
+                status: 'error',
+                checks: {
+                    hateSpeech: { 
+                        url: url, 
+                        status: 'error', 
+                        reason: 'Chrome not found', 
+                        details: 'Chrome executable not found on server. Please contact support.' 
+                    },
+                    plagiarism: { 
+                        url: url, 
+                        status: 'error', 
+                        reason: 'Chrome not found', 
+                        details: 'Chrome executable not found on server. Please contact support.' 
+                    },
+                    images: { 
+                        status: 'error', 
+                        reason: 'Chrome not found', 
+                        details: 'Chrome executable not found on server. Please contact support.' 
+                    },
+                    ads: { 
+                        status: 'error', 
+                        reason: 'Chrome not found', 
+                        details: 'Chrome executable not found on server. Please contact support.' 
+                    }
+                },
+                contentRecency: {
+                    status: 'error',
+                    reason: 'Chrome not found',
+                    details: 'Chrome executable not found on server. Please contact support.',
+                    sourcesChecked: []
+                }
+            };
+            
+            // Store the error result in the database
+            try {
+                await storeAuditResult(errorResult);
+            } catch (dbError) {
+                logMessage(`[AuditController] Error storing audit result in database: ${dbError.message}`, 'error');
+            }
+            
+            return res.status(500).json({
+                success: false,
+                error: 'Chrome executable not found on server',
+                result: errorResult
+            });
+        }
+        
         // Launch browser with updated configuration
-        browser = await puppeteer.launch(getPuppeteerLaunchOptions());
+        browser = await puppeteer.launch(launchOptions);
         
         // Create new page
         page = await browser.newPage();

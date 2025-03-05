@@ -1,0 +1,7 @@
+ build:
+  packages:
+    - chromium
+    - chromium-driver
+  env:
+    - key: CHROME_BIN
+      value: /usr/bin/chromium

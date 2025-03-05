@@ -8,24 +8,38 @@ const fs = require('fs');
 const path = require('path');
 const { logMessage } = require('../utils/logger');
 
-// Create a connection pool with SSL support for production
-const pool = new Pool({
-    user: process.env.DB_USER || 'postgres',
-    host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'website_auditor',
-    password: process.env.DB_PASSWORD || 'postgres',
-    port: process.env.DB_PORT || 5432,
-    max: 20, // Maximum number of clients in the pool
-    idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
-    connectionTimeoutMillis: 2000, // How long to wait for a connection
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+// Create a connection pool
+let pool;
 
-// Handle idle errors
-pool.on('error', (err) => {
-    logMessage('Unexpected error on idle client', 'error');
-    process.exit(-1);
-});
+// Initialize the database connection pool
+function initPool() {
+    // Check if DATABASE_URL is provided (Render deployment)
+    if (process.env.DATABASE_URL) {
+        logMessage('Using DATABASE_URL for connection');
+        pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+        });
+    } else {
+        // Use individual connection parameters (local development)
+        logMessage('Using individual connection parameters');
+        pool = new Pool({
+            user: process.env.DB_USER,
+            password: process.env.DB_PASS,
+            host: process.env.DB_HOST,
+            database: process.env.DB_NAME,
+            port: process.env.DB_PORT || 5432,
+            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+        });
+    }
+
+    // Log pool errors
+    pool.on('error', (err) => {
+        logMessage(`Unexpected error on idle client: ${err.message}`, 'error');
+    });
+
+    return pool;
+}
 
 /**
  * Execute a database query
@@ -36,12 +50,19 @@ pool.on('error', (err) => {
 async function query(text, params) {
     const start = Date.now();
     try {
-        // Only pass params if they are provided
-        const res = params ? await pool.query(text, params) : await pool.query(text);
+        // Initialize the connection pool if not already done
+        if (!pool) {
+            pool = initPool();
+        }
+
+        const result = await pool.query(text, params);
         const duration = Date.now() - start;
-        logMessage(`Executed query in ${duration}ms: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`);
-        return res;
+        
+        logMessage(`Executed query in ${duration}ms: ${text.substring(0, 50)}...`);
+        
+        return result;
     } catch (error) {
+        const duration = Date.now() - start;
         logMessage(`Error executing query: ${error.message}`, 'error');
         logMessage(`Failed query: ${text}`, 'error');
         throw error;
@@ -101,34 +122,40 @@ async function transaction(queriesOrCallback) {
  * Creates tables if they don't exist
  */
 async function initDatabase() {
-    logMessage('Initializing database...');
-    
     try {
-        // Read schema file
-        let schema;
+        // Create logs directory if it doesn't exist
+        const logsDir = path.join(__dirname, '..', 'logs');
+        if (!fs.existsSync(logsDir)) {
+            fs.mkdirSync(logsDir, { recursive: true });
+        }
+
+        // Initialize the connection pool if not already done
+        if (!pool) {
+            pool = initPool();
+        }
+
+        // Read the schema file
+        const schemaPath = path.join(__dirname, 'schema.sql');
+        let schemaSQL;
+        
         try {
-            schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-        } catch (error) {
-            if (error.code === 'ENOENT') {
-                logMessage('Error reading schema file: File not found', 'error');
+            schemaSQL = fs.readFileSync(schemaPath, 'utf8');
+        } catch (err) {
+            if (err.code === 'ENOENT') {
                 throw new Error('Error reading schema file');
             }
-            throw error;
+            throw err;
         }
-        
-        // Execute schema - don't pass undefined as second parameter
-        await query(schema);
-        
-        logMessage('Database schema initialized successfully');
+
+        // Execute the schema SQL
+        logMessage('Executing database schema...');
+        await pool.query(schemaSQL);
+        logMessage('Database schema executed successfully');
+
         return { success: true };
     } catch (error) {
-        // If it's already a specific error, just re-throw it
-        if (error.message === 'Error reading schema file') {
-            throw error;
-        } else {
-            logMessage(`Error initializing database: ${error.message}`, 'error');
-            throw new Error('Error initializing database');
-        }
+        logMessage(`Error initializing database: ${error.message}`, 'error');
+        throw new Error(`Error initializing database: ${error.message}`);
     }
 }
 
@@ -136,5 +163,5 @@ module.exports = {
     query,
     transaction,
     initDatabase,
-    pool
+    pool: () => pool
 }; 

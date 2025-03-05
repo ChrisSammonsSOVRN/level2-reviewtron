@@ -126,11 +126,25 @@ class AdAnalyzer {
     }
 
     async analyzeUrl(url) {
-        let browser;
+        let browser = null;
         try {
             logMessage(`[AdAnalyzer] ========== Starting ad analysis for ${url} ==========`);
             
-            browser = await this.launchBrowser();
+            // Get Puppeteer launch options
+            const launchOptions = getPuppeteerLaunchOptions();
+            
+            // Check if Chrome executable was found
+            if (!launchOptions._chromeExists) {
+                logMessage('[AdAnalyzer] Chrome executable not found, cannot launch browser', 'error');
+                return {
+                    status: 'error',
+                    reason: 'Chrome not found',
+                    details: 'Chrome executable not found on server. Please contact support.'
+                };
+            }
+            
+            // Launch browser
+            browser = await puppeteer.launch(launchOptions);
 
             const page = await browser.newPage();
             

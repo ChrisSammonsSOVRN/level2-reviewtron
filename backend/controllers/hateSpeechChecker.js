@@ -180,8 +180,21 @@ class HateSpeechChecker {
         try {
             logMessage(`[HateSpeechChecker] Extracting content from URL: ${url}`);
             
+            // Get Puppeteer launch options
+            const launchOptions = getPuppeteerLaunchOptions();
+            
+            // Check if Chrome executable was found
+            if (!launchOptions._chromeExists) {
+                logMessage('[HateSpeechChecker] Chrome executable not found, cannot launch browser', 'error');
+                return {
+                    status: 'error',
+                    reason: 'Chrome not found',
+                    details: 'Chrome executable not found on server. Please contact support.'
+                };
+            }
+            
             // Launch Puppeteer with proper configurations
-            browser = await this.launchBrowser();
+            browser = await puppeteer.launch(launchOptions);
             
             // Open a new page and set the environment
             const page = await browser.newPage();

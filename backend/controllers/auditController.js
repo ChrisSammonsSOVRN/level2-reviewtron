@@ -454,7 +454,7 @@ async function auditUrl(req, res) {
         const launchOptions = getPuppeteerLaunchOptions();
         
         // Check if Chrome executable was found
-        if (!launchOptions.executablePath) {
+        if (!launchOptions._chromeExists) {
             logMessage('[AuditController] Chrome executable not found, cannot launch browser', 'error');
             
             // Return a partial result with error information

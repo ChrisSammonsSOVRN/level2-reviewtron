@@ -9,7 +9,7 @@ const { execSync } = require('child_process');
 
 /**
  * Find Chrome/Chromium executable
- * @returns {string|null} Path to Chrome/Chromium executable or null if not found
+ * @returns {string} Path to Chrome/Chromium executable or a default path if not found
  */
 function findChromeExecutable() {
     // Check standard paths first
@@ -52,8 +52,12 @@ function findChromeExecutable() {
         logMessage(`[PuppeteerConfig] Error checking Nix store: ${error.message}`);
     }
 
-    logMessage('[PuppeteerConfig] No Chrome/Chromium executable found');
-    return null;
+    // If we get here, we couldn't find Chrome
+    logMessage('[PuppeteerConfig] No Chrome/Chromium executable found, using default path');
+    
+    // Return a default path - this will cause an error when Puppeteer tries to use it,
+    // but it will be a more controlled error that we can catch
+    return '/usr/bin/google-chrome-stable';
 }
 
 /**
@@ -66,6 +70,7 @@ function getPuppeteerLaunchOptions() {
         logMessage('[PuppeteerConfig] Using Puppeteer configuration for production environment');
         
         const chromePath = findChromeExecutable();
+        const chromeExists = fs.existsSync(chromePath);
         
         return {
             args: [
@@ -80,21 +85,27 @@ function getPuppeteerLaunchOptions() {
             ],
             headless: true,
             ignoreHTTPSErrors: true,
-            executablePath: chromePath
+            executablePath: chromePath,
+            // Add a flag to indicate if Chrome actually exists
+            _chromeExists: chromeExists
         };
     }
     
     // For local development
     logMessage('[PuppeteerConfig] Using Puppeteer configuration for local environment');
+    const localChromePath = process.platform === 'darwin' 
+        ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' // Mac
+        : process.platform === 'win32'
+            ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' // Windows
+            : '/usr/bin/google-chrome'; // Linux
+            
     return {
-        executablePath: process.platform === 'darwin' 
-            ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' // Mac
-            : process.platform === 'win32'
-                ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' // Windows
-                : '/usr/bin/google-chrome', // Linux
+        executablePath: localChromePath,
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         headless: "new",
-        ignoreDefaultArgs: ['--disable-extensions']
+        ignoreDefaultArgs: ['--disable-extensions'],
+        // Add a flag to indicate if Chrome actually exists
+        _chromeExists: fs.existsSync(localChromePath)
     };
 }
 

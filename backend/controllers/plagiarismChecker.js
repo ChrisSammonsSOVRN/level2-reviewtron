@@ -2,6 +2,7 @@ const axios = require('axios');
 const puppeteer = require('puppeteer-core');
 const { logMessage } = require('../utils/logger');
 const path = require('path');
+const { getPuppeteerLaunchOptions } = require('../utils/puppeteerConfig');
 
 // Check if JSDOM and Readability are available, if not provide instructions
 let JSDOM, Readability;
@@ -237,18 +238,7 @@ class PlagiarismChecker {
     }
 
     async launchBrowser() {
-        return await puppeteer.launch({
-            executablePath: process.env.NODE_ENV === 'production' 
-                ? '/usr/bin/google-chrome-stable'  // Path to Chrome on Render
-                : process.platform === 'darwin' 
-                    ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' // Mac
-                    : process.platform === 'win32'
-                        ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' // Windows
-                        : '/usr/bin/google-chrome', // Linux
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-            headless: "new",
-            ignoreDefaultArgs: ['--disable-extensions']
-        });
+        return await puppeteer.launch(getPuppeteerLaunchOptions());
     }
 
     /**

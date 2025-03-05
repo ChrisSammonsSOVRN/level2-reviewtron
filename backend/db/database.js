@@ -123,8 +123,14 @@ async function transaction(queriesOrCallback) {
  */
 async function initDatabase() {
     try {
+        // Initialize the connection pool if not already done
+        if (!pool) {
+            pool = initPool();
+        }
+        
         // Read schema file
         const schemaPath = path.join(__dirname, 'schema.sql');
+        logMessage(`Reading schema file from: ${schemaPath}`);
         const schema = fs.readFileSync(schemaPath, 'utf8');
         
         // Execute schema
@@ -139,9 +145,29 @@ async function initDatabase() {
         for (const migrationFile of migrationFiles) {
             try {
                 const migrationPath = path.join(__dirname, migrationFile);
+                logMessage(`Applying migration from: ${migrationPath}`);
+                
+                if (!fs.existsSync(migrationPath)) {
+                    logMessage(`Migration file not found: ${migrationPath}`, 'error');
+                    continue;
+                }
+                
                 const migration = fs.readFileSync(migrationPath, 'utf8');
                 await pool.query(migration);
                 logMessage(`Migration ${migrationFile} applied successfully`);
+                
+                // Verify the column exists after migration
+                const checkColumnQuery = `
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'audit_results' AND column_name = 'rejection_code'
+                `;
+                const result = await pool.query(checkColumnQuery);
+                if (result.rows.length > 0) {
+                    logMessage('Verified rejection_code column exists in audit_results table');
+                } else {
+                    logMessage('WARNING: rejection_code column still does not exist after migration', 'error');
+                }
             } catch (migrationError) {
                 logMessage(`Error applying migration ${migrationFile}: ${migrationError.message}`, 'error');
                 // Continue with other migrations even if one fails

@@ -9,7 +9,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "preinstall": "export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true || set PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true"
+    "preinstall": "export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true || set PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true",
+    "postinstall": "node -e \"try { require('puppeteer').executablePath(); } catch (e) { console.log('Installing puppeteer...'); require('child_process').execSync('npx puppeteer browsers install chrome', {stdio: 'inherit'}); }\""
   },
   "engines": {
     "node": "18.x"
@@ -29,7 +30,8 @@
     "pg": "^8.11.3",
     "pg-promise": "^11.10.2",
     "xml2js": "^0.6.2",
-    "puppeteer-core": "^21.5.0"
+    "puppeteer": "^21.0.0",
+    "puppeteer-core": "^21.0.0"
   },
   "devDependencies": {
     "jest": "^29.7.0",

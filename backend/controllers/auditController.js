@@ -10,6 +10,7 @@ const adAnalyzer = require('./adAnalyzer');
 const sqlGenerator = require('./sqlGenerator');
 const db = require('../db/database'); // Assuming we have a database connection module
 const puppeteer = require('puppeteer-core');
+const { getPuppeteerLaunchOptions } = require('../utils/puppeteerConfig');
 
 /**
  * Checks if a URL contains banned words or patterns
@@ -450,18 +451,7 @@ async function auditUrl(req, res) {
     
     try {
         // Launch browser with updated configuration
-        browser = await puppeteer.launch({
-            executablePath: process.env.NODE_ENV === 'production' 
-              ? '/usr/bin/google-chrome-stable'  // Path to Chrome on Render
-              : process.platform === 'darwin' 
-                ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' // Mac
-                : process.platform === 'win32'
-                  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' // Windows
-                  : '/usr/bin/google-chrome', // Linux
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-            headless: "new",
-            ignoreDefaultArgs: ['--disable-extensions']
-        });
+        browser = await puppeteer.launch(getPuppeteerLaunchOptions());
         
         // Create new page
         page = await browser.newPage();

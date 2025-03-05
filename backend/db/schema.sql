@@ -13,8 +13,9 @@ CREATE TABLE IF NOT EXISTS audit_results (
     id SERIAL PRIMARY KEY,
     site_id INTEGER REFERENCES sites(id),
     url TEXT NOT NULL,
-    timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status TEXT NOT NULL,
+    rejection_code TEXT,
     failure_reason TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

@@ -123,39 +123,41 @@ async function transaction(queriesOrCallback) {
  */
 async function initDatabase() {
     try {
-        // Create logs directory if it doesn't exist
-        const logsDir = path.join(__dirname, '..', 'logs');
-        if (!fs.existsSync(logsDir)) {
-            fs.mkdirSync(logsDir, { recursive: true });
-        }
-
-        // Initialize the connection pool if not already done
-        if (!pool) {
-            pool = initPool();
-        }
-
-        // Read the schema file
+        // Read schema file
         const schemaPath = path.join(__dirname, 'schema.sql');
-        let schemaSQL;
+        const schema = fs.readFileSync(schemaPath, 'utf8');
         
-        try {
-            schemaSQL = fs.readFileSync(schemaPath, 'utf8');
-        } catch (err) {
-            if (err.code === 'ENOENT') {
-                throw new Error('Error reading schema file');
+        // Execute schema
+        await pool.query(schema);
+        logMessage('Database schema initialized successfully');
+        
+        // Run migrations
+        const migrationFiles = [
+            'migrations/add_rejection_code.sql'
+        ];
+        
+        for (const migrationFile of migrationFiles) {
+            try {
+                const migrationPath = path.join(__dirname, migrationFile);
+                const migration = fs.readFileSync(migrationPath, 'utf8');
+                await pool.query(migration);
+                logMessage(`Migration ${migrationFile} applied successfully`);
+            } catch (migrationError) {
+                logMessage(`Error applying migration ${migrationFile}: ${migrationError.message}`, 'error');
+                // Continue with other migrations even if one fails
             }
-            throw err;
         }
-
-        // Execute the schema SQL
-        logMessage('Executing database schema...');
-        await pool.query(schemaSQL);
-        logMessage('Database schema executed successfully');
-
-        return { success: true };
+        
+        return true;
     } catch (error) {
+        // Handle file not found error specifically
+        if (error.code === 'ENOENT') {
+            logMessage('Error reading schema file: File not found', 'error');
+            throw new Error('Error reading schema file');
+        }
+        
         logMessage(`Error initializing database: ${error.message}`, 'error');
-        throw new Error(`Error initializing database: ${error.message}`);
+        throw error;
     }
 }
 

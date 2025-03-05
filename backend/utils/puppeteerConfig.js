@@ -67,6 +67,34 @@ function findChromeExecutable() {
 function getPuppeteerLaunchOptions() {
     const isProduction = process.env.NODE_ENV === 'production';
     
+    logMessage('[PuppeteerConfig] Checking Chrome installation status...');
+    
+    // Log environment information
+    logMessage(`[PuppeteerConfig] NODE_ENV: ${process.env.NODE_ENV}`);
+    logMessage(`[PuppeteerConfig] CHROME_BIN: ${process.env.CHROME_BIN || 'not set'}`);
+    
+    // Try to find Chrome using which command
+    try {
+        const whichChromium = execSync('which chromium 2>/dev/null || echo "not found"').toString().trim();
+        const whichChromiumBrowser = execSync('which chromium-browser 2>/dev/null || echo "not found"').toString().trim();
+        const whichGoogleChrome = execSync('which google-chrome 2>/dev/null || echo "not found"').toString().trim();
+        
+        logMessage(`[PuppeteerConfig] which chromium: ${whichChromium}`);
+        logMessage(`[PuppeteerConfig] which chromium-browser: ${whichChromiumBrowser}`);
+        logMessage(`[PuppeteerConfig] which google-chrome: ${whichGoogleChrome}`);
+    } catch (error) {
+        logMessage(`[PuppeteerConfig] Error running which commands: ${error.message}`);
+    }
+    
+    // Check Nix store
+    try {
+        logMessage('[PuppeteerConfig] Checking Nix store for Chromium...');
+        const nixStoreContent = execSync('find /nix/store -name "chromium*" 2>/dev/null || echo "No matches"').toString().trim();
+        logMessage(`[PuppeteerConfig] Nix store chromium matches:\n${nixStoreContent}`);
+    } catch (error) {
+        logMessage(`[PuppeteerConfig] Error checking Nix store: ${error.message}`);
+    }
+    
     // Define possible Chrome paths in order of preference
     const chromePaths = [
         process.env.CHROME_BIN,
@@ -74,23 +102,41 @@ function getPuppeteerLaunchOptions() {
         '/usr/bin/chromium-browser',
         '/usr/bin/google-chrome',
         '/usr/bin/google-chrome-stable',
-        // Render.com Nix path - this is typically where Chrome is installed
         '/nix/store/x205pbkd5xh5g4iv0n41vgpn3q0a2wmw-chromium-108.0.5359.94/bin/chromium'
     ];
+
+    // Check each path and log its status
+    for (const path of chromePaths) {
+        if (path) {
+            try {
+                if (fs.existsSync(path)) {
+                    const stats = fs.statSync(path);
+                    logMessage(`[PuppeteerConfig] Found ${path}:`);
+                    logMessage(`  - File permissions: ${stats.mode}`);
+                    logMessage(`  - Owner: ${stats.uid}`);
+                    logMessage(`  - Size: ${stats.size} bytes`);
+                    logMessage(`  - Is executable: ${(stats.mode & fs.constants.S_IXUSR) !== 0}`);
+                } else {
+                    logMessage(`[PuppeteerConfig] Path does not exist: ${path}`);
+                }
+            } catch (error) {
+                logMessage(`[PuppeteerConfig] Error checking path ${path}: ${error.message}`);
+            }
+        }
+    }
 
     // Find the first existing Chrome path
     let executablePath = null;
     for (const path of chromePaths) {
         if (path && fs.existsSync(path)) {
             executablePath = path;
-            logMessage(`[PuppeteerConfig] Found Chrome at: ${path}`);
+            logMessage(`[PuppeteerConfig] Selected Chrome path: ${path}`);
             break;
         }
     }
 
     if (!executablePath) {
         logMessage(`[PuppeteerConfig] WARNING: No Chrome installation found in any standard location`, 'warn');
-        // Default to chromium-browser as a last resort
         executablePath = '/usr/bin/chromium-browser';
     }
 
@@ -107,7 +153,9 @@ function getPuppeteerLaunchOptions() {
         ]
     };
 
-    logMessage(`[PuppeteerConfig] Configured Puppeteer with executablePath: ${executablePath}`);
+    logMessage(`[PuppeteerConfig] Final Puppeteer configuration:`, 'info');
+    logMessage(JSON.stringify(options, null, 2));
+    
     return options;
 }
 

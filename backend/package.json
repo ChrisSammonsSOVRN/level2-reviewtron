@@ -10,7 +10,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "preinstall": "echo 'Installing with Chrome'",
-    "postinstall": "npx puppeteer browsers install chrome && node -e \"console.log('Puppeteer Chrome path:', require('puppeteer').executablePath())\""
+    "postinstall": "apt-get update && apt-get install -y chromium && which chromium"
   },
   "engines": {
     "node": "18.x"

@@ -31,5 +31,5 @@ ENV PORT=8080
 # Expose the port (Cloud Run requires port 8080)
 EXPOSE 8080
 
-# Start with the test server first
-CMD ["node", "test-server.js"] 
+# Start the main server
+CMD ["node", "server.js"] 
